@@ -15,11 +15,11 @@ def _variable_with_weight_decay(name, shape, stddev, wd, dtype):
 
     return var
 
-def feed_encoder(input, dtype):
+def encoder_forward(input, dtype):
     # conv1
     with tf.variable_scope('conv1'):
         filter = _variable_with_weight_decay(name='weights', shape=[5, 5, 3, 64], stddev=5e-2, dtype=dtype, wd=0.0)
-        conv = tf.nn.conv2d(input, filter=filter, strides=[1, 1, 1, 1], padding='SAME', name='conv2d')
+        conv = tf.nn.conv2d(input, filter=filter, strides=[1, 1, 1, 1], padding='SAME')
         bias = _variable_on_cpu('bias', shape=[64], initializer=tf.constant_initializer(0.0), dtype=dtype)
         pre_activation = tf.nn.bias_add(conv, bias, name='pre_activation')
         conv1 = tf.nn.relu(pre_activation, 'activation')
@@ -30,7 +30,7 @@ def feed_encoder(input, dtype):
     # conv2
     with tf.variable_scope('conv2'):
         filter = _variable_with_weight_decay(name='weights', shape=[5, 5, 64, 64], stddev=5e-2, dtype=dtype, wd=0.0)
-        conv = tf.nn.conv2d(conv1, filter=filter, strides=[1, 1, 1, 1], padding='SAME', name='conv2d')
+        conv = tf.nn.conv2d(pool1_what, filter=filter, strides=[1, 1, 1, 1], padding='SAME')
         bias = _variable_on_cpu('bias', shape=[64], initializer=tf.constant_initializer(0.0), dtype=dtype)
         pre_activation = tf.nn.bias_add(conv, bias, name='pre_activation')
         conv2 = tf.nn.relu(pre_activation, 'activation')
@@ -39,5 +39,23 @@ def feed_encoder(input, dtype):
     pool2_what, pool2_where = tf.nn.max_pool_with_argmax(conv2, ksize=[1, 3, 3, 1], strides=[1, 2, 2, 1], padding='SAME')
 
     return pool1_what, pool1_where, pool2_what, pool2_where
+
+def decoder_forward(conv2, dtype):
+    #deconv1
+    with tf.variable_scope('deconv1'):
+        filter = _variable_with_weight_decay(name='weights', shape=[5, 5, 64, 64], stddev=5e-2, dtype=dtype, wd=0.0)
+        conv = tf.nn.conv2d(conv2, filter=filter, strides=[1, 1, 1, 1], padding='SAME')
+        bias = _variable_on_cpu('bias', shape=[64], initializer=tf.constant_initializer(0.0), dtype=dtype)
+        pre_activation = tf.nn.bias_add(conv, bias, name='pre_activation')
+        deconv1 = tf.nn.relu(pre_activation)
+
+    #unpool1
+
+
+def ae_loss(input, output, lambda_rec):
+    reconstruction_loss = tf.multiply(lambda_rec, tf.nn.l2_loss(tf.subtract(input, output)))
+    tf.add_to_collection('losses', reconstruction_loss)
+    return tf.add_n(tf.get_collection('losses'), name='total_loss')
+
 
 
