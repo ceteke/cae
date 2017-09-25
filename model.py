@@ -47,7 +47,7 @@ def max_unpool(bottom, argmax):
 
     t3 = tf.transpose(argmax, perm=[1, 4, 2, 3, 0])
 
-    t = tf.concat(4, [t2, t3, t1])
+    t = tf.concat([t2, t3, t1], 4)
     indices = tf.reshape(t, [(height//2)*(width//2)*channels*batch_size, 4])
 
     x1 = tf.transpose(bottom, perm=[0, 3, 1, 2])
