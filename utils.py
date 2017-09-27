@@ -14,3 +14,13 @@ def parse_layers(layer_str):
             pool_size = int(layer.replace('p', ''))
             layer_arr[-1].pool_size = pool_size
     return layer_arr
+
+def save_loss(loss):
+    path = 'loss.txt'
+    with open(path, 'a') as f:
+        f.write(str(loss)+'\n')
+
+def clear_loss():
+    path = 'loss.txt'
+    with open(path, 'w') as f:
+        f.write('')

@@ -16,8 +16,9 @@ class SWWAE:
         self.form_graph()
 
     def form_variables(self):
-        self.input = tf.placeholder(shape=[32, self.image_shape[0], self.image_shape[1], self.image_shape[2]],
+        self.input = tf.placeholder(shape=[None, self.image_shape[0], self.image_shape[1], self.image_shape[2]],
                                     dtype=self.dtype, name='input_batch')
+        self.global_step = tf.Variable(0, trainable=False)
         if self.mode == 'classification':
             self.labels = tf.placeholder(shape=[32,], dtype=tf.int8, name='labels')
 
@@ -106,7 +107,7 @@ class SWWAE:
 
     def init_optimizer(self, loss):
         optimizer = tf.train.GradientDescentOptimizer(self.learning_rate)
-        self.opt_op = optimizer.minimize(loss)
+        self.opt_op = optimizer.minimize(loss, global_step=self.global_step)
 
     def form_graph(self):
         self.encoder_forward()
@@ -118,9 +119,23 @@ class SWWAE:
 
     def train(self, input):
         if self.mode == 'autoencode':
-            _, batch_loss = self.sess.run([self.opt_op, self.ae_loss], feed_dict={self.input: input})
-            return batch_loss
+            _, batch_loss, global_step = self.sess.run([self.opt_op, self.ae_loss, self.global_step],
+                                                       feed_dict={self.input: input})
+            return batch_loss, global_step
 
     def eval(self, input):
         if self.mode == 'autoencode':
             return self.sess.run(self.ae_loss, feed_dict={self.input:input})
+
+    def save(self, path, ow=True):
+        saver = tf.train.Saver()
+        if ow:
+            save_path = saver.save(self.sess, save_path=path)
+        else:
+            save_path = saver.save(self.sess, save_path=path, global_step=self.global_step)
+
+        print('model saved at {}'.format(save_path), flush=True)
+
+    def restore(self, path):
+        saver = tf.train.Saver()
+        saver.restore(self.sess, save_path=path)

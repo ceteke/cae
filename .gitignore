@@ -7,7 +7,8 @@ __pycache__/
 .idea
 # C extensions
 *.so
-
+loss.txt
+cifar-10-python
 # Distribution / packaging
 .Python
 env/
