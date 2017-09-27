@@ -26,7 +26,7 @@ def main():
     X, _ = dataset.get_batches(parsed.batch_size)
     print("Train steps: {}".format(len(X)))
 
-    for e in parsed.num_epochs:
+    for e in range(parsed.num_epochs):
         total_loss = 0.0
         epoch_loss = 0.0
         train_steps = len(X)
