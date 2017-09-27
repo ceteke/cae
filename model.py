@@ -1,121 +1,126 @@
 import tensorflow as tf
+from tf_utils import max_unpool, variable_on_cpu, variable_with_weight_decay
 
-def _variable_on_cpu(name, shape, initializer, dtype):
-    with tf.device('/cpu:0'):
-        return tf.get_variable(name=name, shape=shape, initializer=initializer, dtype=dtype)
+class SWWAE:
+    def __init__(self, sess, image_shape, mode, layers, learning_rate, lambda_rec, lambda_M, dtype):
+        self.layers = layers
+        self.dtype = dtype
+        self.mode = mode
+        self.lambda_M = lambda_M
+        self.lambda_rec = lambda_rec
+        self.sess = sess
+        self.learning_rate = learning_rate
+        self.image_shape = image_shape
 
-def _variable_with_weight_decay(name, shape, stddev, wd, dtype):
-    var = _variable_on_cpu(name=name, shape=shape,
-                           initializer=tf.truncated_normal_initializer(stddev=stddev, dtype=tf.float32),
-                           dtype=dtype)
+        self.form_variables()
+        self.form_graph()
 
-    if wd is not None:
-        weight_decay = tf.multiply(tf.nn.l2_loss(var), wd, name='weight_loss')
-        tf.add_to_collection('losses', weight_decay)
+    def form_variables(self):
+        self.input = tf.placeholder(shape=[32, self.image_shape[0], self.image_shape[1], self.image_shape[2]],
+                                    dtype=self.dtype, name='input_batch')
+        if self.mode == 'classification':
+            self.labels = tf.placeholder(shape=[32,], dtype=tf.int8, name='labels')
 
-    return var
+    def encoder_forward(self):
+        encoder_whats = []
+        encoder_wheres = []
+        encoder_what = self.input
 
-def max_unpool(updates, mask, ksize, scope='unpool'):
-    with tf.variable_scope(scope):
-        input_shape = updates.get_shape().as_list()
-        #  calculation new shape
-        output_shape = (input_shape[0], input_shape[1] * ksize[1], input_shape[2] * ksize[2], input_shape[3])
-        # calculation indices for batch, height, width and feature maps
-        one_like_mask = tf.ones_like(mask)
-        batch_range = tf.reshape(tf.range(output_shape[0], dtype=tf.int64), shape=[input_shape[0], 1, 1, 1])
-        b = one_like_mask * batch_range
-        y = mask // (output_shape[2] * output_shape[3])
-        x = mask % (output_shape[2] * output_shape[3]) // output_shape[3]
-        feature_range = tf.range(output_shape[3], dtype=tf.int64)
-        f = one_like_mask * feature_range
-        # transpose indices & reshape update values to one dimension
-        updates_size = tf.size(updates)
-        indices = tf.transpose(tf.reshape(tf.stack([b, y, x, f]), [4, updates_size]))
-        values = tf.reshape(updates, [updates_size])
-        ret = tf.scatter_nd(indices, values, output_shape)
-        return ret
+        for i, layer in enumerate(self.layers):
+            # convn
+            with tf.variable_scope('conv{}'.format(i+1)):
+                if i == 0:
+                    shape = [layer.filter_size, layer.filter_size, self.image_shape[-1], layer.channel_size]
+                else:
+                    shape = [layer.filter_size, layer.filter_size, self.layers[i-1].channel_size, layer.channel_size]
 
-def encoder_forward(input, layers, dtype):
-    encoder_whats = []
-    encoder_wheres = []
-    encoder_what = input
+                filter = variable_with_weight_decay(name='weights',
+                                                     shape=shape,
+                                                     stddev=5e-2, dtype=self.dtype, wd=0.0)
 
-    for i, layer in enumerate(layers):
-        # convn
-        with tf.variable_scope('conv{}'.format(i+1)):
-            if i == 0:
-                shape = [layer.filter_size, layer.filter_size, 3, layer.channel_size]
+                conv = tf.nn.conv2d(encoder_what, filter=filter, strides=[1, 1, 1, 1], padding='SAME')
+                bias = variable_on_cpu('bias', shape=[layer.channel_size], initializer=tf.constant_initializer(0.0),
+                                        dtype=self.dtype)
+
+                pre_activation = tf.nn.bias_add(conv, bias, name='pre_activation')
+                encoder_what = tf.nn.relu(pre_activation, 'activation')
+
+            # pooln
+            if layer.pool_size is not None:
+                encoder_what, encoder_where = tf.nn.max_pool_with_argmax(encoder_what,
+                                                                        ksize=[1, layer.pool_size, layer.pool_size, 1],
+                                                                        strides=[1, 2, 2, 1], padding='SAME')
+                encoder_wheres.append(encoder_where)
+
             else:
-                shape = [layer.filter_size, layer.filter_size, layers[i-1].channel_size, layer.channel_size]
+                encoder_wheres.append(None)
 
-            filter = _variable_with_weight_decay(name='weights',
-                                                 shape=shape,
-                                                 stddev=5e-2, dtype=dtype, wd=0.0)
+            encoder_whats.append(encoder_what)
 
-            conv = tf.nn.conv2d(encoder_what, filter=filter, strides=[1, 1, 1, 1], padding='SAME')
-            bias = _variable_on_cpu('bias', shape=[layer.channel_size], initializer=tf.constant_initializer(0.0),
-                                    dtype=dtype)
-
-            pre_activation = tf.nn.bias_add(conv, bias, name='pre_activation')
-            encoder_what = tf.nn.relu(pre_activation, 'activation')
-
-        # pooln
-        if layer.pool_size is not None:
-            encoder_what, encoder_where = tf.nn.max_pool_with_argmax(encoder_what,
-                                                                    ksize=[1, layer.pool_size, layer.pool_size, 1],
-                                                                    strides=[1, 2, 2, 1], padding='SAME')
-            encoder_wheres.append(encoder_where)
-
-        else:
-            encoder_wheres.append(None)
-
-        encoder_whats.append(encoder_what)
-
-    return encoder_whats, encoder_wheres
+        self.encoder_whats = encoder_whats
+        self.encoder_wheres = encoder_wheres
 
 
-def decoder_forward(encoder_whats, encoder_wheres, layers, lambda_M, dtype):
-    decoder_what = encoder_whats[-1]
-    decoder_whats = []
-    for i in range(len(layers)-1, -1, -1):
-        layer = layers[i]
-        #unpooln
-        if encoder_wheres[i] is not None:
-            decoder_what = max_unpool(decoder_what, encoder_wheres[i],
-                                      [1, layer.pool_size, layer.pool_size, 1],
-                                      scope='unpool{}'.format(i+1))
+    def decoder_forward(self):
+        decoder_what = self.encoder_whats[-1]
+        decoder_whats = []
+        for i in range(len(self.layers)-1, -1, -1):
+            layer = self.layers[i]
+            #unpooln
+            if self.encoder_wheres[i] is not None:
+                decoder_what = max_unpool(decoder_what, self.encoder_wheres[i],
+                                          [1, layer.pool_size, layer.pool_size, 1],
+                                          scope='unpool{}'.format(i+1))
 
-        with tf.variable_scope('decoder_conv{}'.format(i+1)):
-            if i == 0:
-                shape = [layer.filter_size, layer.filter_size, layer.channel_size, 3]
-                bias_size = 3
-            else:
-                shape = [layer.filter_size, layer.filter_size, layer.channel_size, layers[i-1].channel_size]
-                bias_size = layers[i-1].channel_size
+            with tf.variable_scope('decoder_conv{}'.format(i+1)):
+                if i == 0:
+                    shape = [layer.filter_size, layer.filter_size, layer.channel_size, self.image_shape[-1]]
+                    bias_size = self.image_shape[-1]
+                else:
+                    shape = [layer.filter_size, layer.filter_size, layer.channel_size, self.layers[i-1].channel_size]
+                    bias_size = self.layers[i-1].channel_size
 
-            filter = _variable_with_weight_decay(name='weights',
-                                                 shape=shape,
-                                                 stddev=5e-2, dtype=dtype, wd=0.0)
+                filter = variable_with_weight_decay(name='weights',
+                                                     shape=shape,
+                                                     stddev=5e-2, dtype=self.dtype, wd=0.0)
 
-            conv = tf.nn.conv2d(decoder_what, filter=filter, strides=[1, 1, 1, 1], padding='SAME')
-            bias = _variable_on_cpu('bias', shape=[bias_size], initializer=tf.constant_initializer(0.0),
-                                    dtype=dtype)
+                conv = tf.nn.conv2d(decoder_what, filter=filter, strides=[1, 1, 1, 1], padding='SAME')
+                bias = variable_on_cpu('bias', shape=[bias_size], initializer=tf.constant_initializer(0.0),
+                                        dtype=self.dtype)
 
-            pre_activation = tf.nn.bias_add(conv, bias, name='pre_activation')
-            decoder_what = tf.nn.relu(pre_activation, 'activation')
+                pre_activation = tf.nn.bias_add(conv, bias, name='pre_activation')
+                decoder_what = tf.nn.relu(pre_activation, 'activation')
 
-            decoder_whats.append(decoder_what)
+                decoder_whats.append(decoder_what)
 
-        if i != 0:
-            middle_loss = tf.multiply(lambda_M, tf.nn.l2_loss(tf.subtract(decoder_what, encoder_whats[i-1])))
-            tf.add_to_collection('losses', middle_loss)
+            if i != 0:
+                middle_loss = tf.multiply(self.lambda_M, tf.nn.l2_loss(tf.subtract(decoder_what, self.encoder_whats[i-1])))
+                tf.add_to_collection('losses', middle_loss)
 
-    return decoder_what
+        self.decoder_what = decoder_what
 
-def ae_loss(input, output, lambda_rec):
-    reconstruction_loss = tf.multiply(lambda_rec, tf.nn.l2_loss(tf.subtract(input, output)))
-    tf.add_to_collection('losses', reconstruction_loss)
-    return tf.add_n(tf.get_collection('losses'), name='total_loss')
+    def ae_loss(self):
+        reconstruction_loss = tf.multiply(self.lambda_rec, tf.nn.l2_loss(tf.subtract(self.input, self.decoder_what)))
+        tf.add_to_collection('losses', reconstruction_loss)
+        self.ae_loss = tf.add_n(tf.get_collection('losses'), name='total_loss')
 
+    def init_optimizer(self, loss):
+        optimizer = tf.train.GradientDescentOptimizer(self.learning_rate)
+        self.opt_op = optimizer.minimize(loss)
 
+    def form_graph(self):
+        self.encoder_forward()
+        if self.mode == 'autoencode':
+            self.decoder_forward()
+            self.ae_loss()
+            self.init_optimizer(self.ae_loss)
+        self.sess.run(tf.global_variables_initializer())
 
+    def train(self, input):
+        if self.mode == 'autoencode':
+            _, batch_loss = self.sess.run([self.opt_op, self.ae_loss], feed_dict={self.input: input})
+            return batch_loss
+
+    def eval(self, input):
+        if self.mode == 'autoencode':
+            return self.sess.run(self.ae_loss, feed_dict={self.input:input})
