@@ -1,0 +1,3 @@
+[submodule "datapy"]
+    path = datapy
+    url = https://github.com/ceteke/datapy
