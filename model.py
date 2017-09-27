@@ -106,14 +106,17 @@ class SWWAE:
         self.ae_loss = tf.add_n(tf.get_collection('losses'), name='total_loss')
 
     def init_optimizer(self, loss):
-        optimizer = tf.train.GradientDescentOptimizer(self.learning_rate)
+        optimizer = tf.train.GradientDescentOptimizer(learning_rate=self.learning_rate)
         self.opt_op = optimizer.minimize(loss, global_step=self.global_step)
 
     def form_graph(self):
+        print("Forming encoder", flush=True)
         self.encoder_forward()
         if self.mode == 'autoencode':
+            print("Forming decoder", flush=True)
             self.decoder_forward()
             self.ae_loss()
+            print("Forming optimizer with learning rate {}".format(self.learning_rate), flush=True)
             self.init_optimizer(self.ae_loss)
         self.sess.run(tf.global_variables_initializer())
 

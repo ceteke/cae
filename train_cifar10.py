@@ -24,7 +24,7 @@ def main():
     swwae = SWWAE(sess,[32,32,3],'autoencode',layers,parsed.learning_rate,parsed.lambda_rec,parsed.lambda_M,tf.float32)
 
     X, _ = dataset.get_batches(parsed.batch_size)
-    print("Train steps: {}".format(len(X)))
+    print("Started training.\nTrain steps: {}".format(len(X)))
 
     for e in range(parsed.num_epochs):
         total_loss = 0.0
@@ -42,7 +42,7 @@ def main():
             if (step + 1) % parsed.info_step == 0:
                 avg_loss = total_loss / parsed.info_step
                 save_loss(avg_loss)
-                print("Train epoch {}:\n\tstep {}\n\tavg. perplexity: {}".format(e + 1, step + 1, avg_loss),
+                print("Train epoch {}:\n\tstep {}\n\tavg. L2 Loss: {}".format(e + 1, step + 1, avg_loss),
                       flush=True)
                 total_loss = 0.0
                 end = time.time()
