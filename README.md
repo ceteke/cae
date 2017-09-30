@@ -1,4 +1,5 @@
 # Tensorflow Convolutional Auto-Encoder
+This is an implementation of Stacked What-Where Auto Encoder in Tensorflow.
 ### Adjusting Layers  
 Layer format is like the following: ```(16)5c-(32)3c-2p```, in which ```(16)5c``` denotes convolution layer with 16 feature maps
 while kernel size being set to 5. ```2p``` denotes 2 × 2 pooling layer.  
