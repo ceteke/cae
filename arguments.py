@@ -13,6 +13,8 @@ def get_parser():
                         type=float, default=0.2)
     parser.add_argument("-lrec", "--lambda_rec", help="Reconstruction loss coefficient", required=True, dest='lambda_rec',
                         type=float, default=1.0)
+    parser.add_argument("-tb", "--tensorboard", help="ID of tensorboard", required=True, dest='tensorboard_id',
+                        type=int)
 
     parser.add_argument("-o", "--output", help="Output directory [optional]", required=False, dest='output_dir', type=str)
     parser.add_argument("-s", "--save", help="Save steps [optional]", required=False, dest='save_step', type=int)
