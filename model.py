@@ -2,7 +2,7 @@ import tensorflow as tf
 from tf_utils import max_unpool, variable_on_cpu, variable_with_weight_decay
 
 class SWWAE:
-    def __init__(self, sess, image_shape, mode, layers, learning_rate, lambda_rec, lambda_M, dtype):
+    def __init__(self, sess, image_shape, mode, layers, learning_rate, lambda_rec, lambda_M, dtype, tensorboard_id):
         self.layers = layers
         self.dtype = dtype
         self.mode = mode
@@ -11,6 +11,7 @@ class SWWAE:
         self.sess = sess
         self.learning_rate = learning_rate
         self.image_shape = image_shape
+        self.tensorboard_id = tensorboard_id
 
         self.form_variables()
         self.form_graph()
@@ -104,6 +105,7 @@ class SWWAE:
         reconstruction_loss = tf.multiply(self.lambda_rec, tf.nn.l2_loss(tf.subtract(self.input, self.decoder_what)))
         tf.add_to_collection('losses', reconstruction_loss)
         self.ae_loss = tf.add_n(tf.get_collection('losses'), name='total_loss')
+        tf.summary.scalar('loss', self.ae_loss)
 
     def init_optimizer(self, loss):
         optimizer = tf.train.GradientDescentOptimizer(learning_rate=self.learning_rate)
@@ -118,12 +120,15 @@ class SWWAE:
             self.ae_loss()
             print("Forming optimizer with learning rate {}".format(self.learning_rate), flush=True)
             self.init_optimizer(self.ae_loss)
+        self.merged = tf.summary.merge_all()
+        self.train_writer = tf.summary.FileWriter('tensorboard/{}'.format(self.tensorboard_id), self.sess.graph)
         self.sess.run(tf.global_variables_initializer())
 
     def train(self, input):
         if self.mode == 'autoencode':
-            _, batch_loss, global_step = self.sess.run([self.opt_op, self.ae_loss, self.global_step],
+            _, batch_loss, global_step, tb_merge = self.sess.run([self.opt_op, self.ae_loss, self.global_step, self.merged],
                                                        feed_dict={self.input: input})
+            self.train_writer.add_summary(tb_merge, global_step)
             return batch_loss, global_step
 
     def eval(self, input):

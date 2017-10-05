@@ -58,6 +58,9 @@ def main():
         print("Train epoch {}: avg. loss: {}".format(e + 1, epoch_loss / train_steps), flush=True)
         X, _ = dataset.get_batches(parsed.batch_size)
 
+    if parsed.output_dir is not None:
+        swwae.save(path=parsed.output_dir + 'sswae')
+
 
 if __name__ == "__main__":
    main()
