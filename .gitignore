@@ -9,6 +9,7 @@ __pycache__/
 *.so
 loss.txt
 cifar-10-python
+tensorboard
 # Distribution / packaging
 .Python
 env/

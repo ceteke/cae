@@ -51,12 +51,13 @@ class SWWAE:
             if layer.pool_size is not None:
                 encoder_what, encoder_where = tf.nn.max_pool_with_argmax(encoder_what,
                                                                         ksize=[1, layer.pool_size, layer.pool_size, 1],
-                                                                        strides=[1, 2, 2, 1], padding='SAME')
+                                                                        strides=[1, layer.pool_size, layer.pool_size, 1],
+                                                                         padding='SAME')
                 encoder_wheres.append(encoder_where)
 
             else:
                 encoder_wheres.append(None)
-
+            print(encoder_what)
             encoder_whats.append(encoder_what)
 
         self.encoder_whats = encoder_whats
@@ -91,8 +92,10 @@ class SWWAE:
                                         dtype=self.dtype)
 
                 pre_activation = tf.nn.bias_add(conv, bias, name='pre_activation')
-                decoder_what = tf.nn.relu(pre_activation, 'activation')
-
+                if i == 0: # Does not use non-linearity at the last layer
+                    decoder_what = pre_activation
+                else:
+                    decoder_what = tf.nn.relu(pre_activation, 'activation')
                 decoder_whats.append(decoder_what)
 
             if i != 0:
