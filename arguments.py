@@ -21,3 +21,15 @@ def get_parser():
     parser.add_argument("-s", "--save", help="Save steps [optional]", required=False, dest='save_step', type=int)
 
     return parser
+
+def get_emb_parser():
+    parser = argparse.ArgumentParser(description='SWWAE Embedding')
+    parser.add_argument("-b", "--batch", help="Batch size", required=True, dest='batch_size', type=int)
+    parser.add_argument("-l", "--layers", help="Layer string. See README.md", required=False, dest='layer_str',
+                        type=str,
+                        default='(64)3c-4p-(64)3c-3p-(128)3c-(128)3c-2p-(256)3c-(256)3c-(256)3c-(512)3c-(512)3c-(512)3c-2p')
+
+    parser.add_argument("-s", "--save", help="Save embedding path", required=False, dest='save_path',
+                        type=str, default='embedding')
+
+    return parser

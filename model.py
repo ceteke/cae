@@ -2,7 +2,8 @@ import tensorflow as tf
 from tf_utils import max_unpool, variable_on_cpu, variable_with_weight_decay
 
 class SWWAE:
-    def __init__(self, sess, image_shape, mode, layers, learning_rate, lambda_rec, lambda_M, dtype, tensorboard_id):
+    def __init__(self, sess, image_shape, mode, layers, learning_rate=None, lambda_rec=None, lambda_M=None, dtype=tf.float32,
+                 tensorboard_id=None):
         self.layers = layers
         self.dtype = dtype
         self.mode = mode
@@ -60,6 +61,8 @@ class SWWAE:
             encoder_whats.append(encoder_what)
 
         self.encoder_whats = encoder_whats
+        dim = tf.reduce_prod(tf.shape(encoder_whats[-1])[1:])
+        self.representation = tf.reshape(encoder_whats[-1],shape=[-1, dim])
         self.encoder_wheres = encoder_wheres
 
 
@@ -122,9 +125,9 @@ class SWWAE:
             self.ae_loss()
             print("Forming optimizer with learning rate {}".format(self.learning_rate), flush=True)
             self.init_optimizer(self.ae_loss)
-        tf.summary.image('whatwhere/stacked', tf.concat((self.input, self.decoder_what), axis=2), max_outputs=12)
-        self.merged = tf.summary.merge_all()
-        self.train_writer = tf.summary.FileWriter('tensorboard/{}'.format(self.tensorboard_id), self.sess.graph)
+            tf.summary.image('whatwhere/stacked', tf.concat((self.input, self.decoder_what), axis=2), max_outputs=12)
+            self.merged = tf.summary.merge_all()
+            self.train_writer = tf.summary.FileWriter('tensorboard/{}'.format(self.tensorboard_id), self.sess.graph)
         self.sess.run(tf.global_variables_initializer())
 
     def train(self, input):
@@ -137,6 +140,9 @@ class SWWAE:
     def eval(self, input):
         if self.mode == 'autoencode':
             return self.sess.run([self.ae_loss, self.merged], feed_dict={self.input:input})[0]
+
+    def get_representation(self, input):
+        return self.sess.run(self.representation, feed_dict={self.input:input})
 
     def save(self, path, ow=True):
         saver = tf.train.Saver()
