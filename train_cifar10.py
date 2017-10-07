@@ -65,7 +65,7 @@ def main():
     X_test, _ = dataset.get_batches(parsed.batch_size, train=False)
 
     total_loss = 0.0
-    test_steps = len(X)
+    test_steps = len(X_test)
 
     for test_step in range(test_steps):
         X_test_step = X_test[test_step]
