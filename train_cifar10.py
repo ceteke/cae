@@ -61,6 +61,21 @@ def main():
     if parsed.output_dir is not None:
         swwae.save(path=parsed.output_dir + 'sswae')
 
+    print("Starting test..")
+    X_test, _ = dataset.get_batches(parsed.batch_size, train=False)
+
+    total_loss = 0.0
+    test_steps = len(X)
+
+    for test_step in range(test_steps):
+        X_test_step = X_test[test_step]
+
+        loss = swwae.eval(input=X_test_step)
+
+        total_loss += loss
+
+    print("Test average loss: {}".format(total_loss/test_steps))
+
 
 if __name__ == "__main__":
    main()

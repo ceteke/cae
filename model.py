@@ -57,7 +57,6 @@ class SWWAE:
 
             else:
                 encoder_wheres.append(None)
-            print(encoder_what)
             encoder_whats.append(encoder_what)
 
         self.encoder_whats = encoder_whats
@@ -123,7 +122,7 @@ class SWWAE:
             self.ae_loss()
             print("Forming optimizer with learning rate {}".format(self.learning_rate), flush=True)
             self.init_optimizer(self.ae_loss)
-        tf.summary.image('whatwhere/stacked', tf.concat((self.input, self.decoder_what), axis=2))
+        tf.summary.image('whatwhere/stacked', tf.concat((self.input, self.decoder_what), axis=2), max_outputs=12)
         self.merged = tf.summary.merge_all()
         self.train_writer = tf.summary.FileWriter('tensorboard/{}'.format(self.tensorboard_id), self.sess.graph)
         self.sess.run(tf.global_variables_initializer())
@@ -137,7 +136,7 @@ class SWWAE:
 
     def eval(self, input):
         if self.mode == 'autoencode':
-            return self.sess.run(self.ae_loss, feed_dict={self.input:input})
+            return self.sess.run([self.ae_loss, self.merged], feed_dict={self.input:input})[0]
 
     def save(self, path, ow=True):
         saver = tf.train.Saver()
