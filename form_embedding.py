@@ -28,7 +28,7 @@ for test_step in range(test_steps):
     if test_step == 0:
         embedding_matrix = representation
     else:
-        np.concatenate((embedding_matrix, X_test_step))
+        np.concatenate((embedding_matrix, representation))
 
 print(embedding_matrix.shape)
 
