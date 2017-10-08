@@ -35,7 +35,7 @@ for test_step in range(test_steps):
 print(embedding_matrix.shape)
 
 embedding_tensor = tf.stack(embedding_matrix, name='embedding')
-
-saver = tf.train.Saver(var_list=[embedding_tensor])
+embedding_tensor_variable = tf.Variable(embedding_tensor, trainable=False)
+saver = tf.train.Saver(var_list=[embedding_tensor_variable])
 saver.save(sess, save_path=parsed.save_path)
 
