@@ -162,6 +162,7 @@ class SWWAE:
 
     def init_optimizer(self, loss):
         optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
+        print(self.encoder_train)
         if not self.encoder_train and self.mode=='classification':
             fc_vars = []
             for i,_ in enumerate(self.fc_layers):
