@@ -163,7 +163,7 @@ class SWWAE:
         return s_loss
 
     def init_optimizer(self, loss):
-        optimizer = tf.train.GradientDescentOptimizer(learning_rate=self.learning_rate)
+        optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
         self.opt_op = optimizer.minimize(loss, global_step=self.global_step)
 
     def form_graph(self):
