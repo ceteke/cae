@@ -70,15 +70,15 @@ def main():
 
                 print("Test average loss: {}, average acc: {}".format(total_loss_test / test_steps, total_acc_test / test_steps))
 
-                print("Train epoch {}:\n\tstep {}\n\tAvg Loss: {} Avg accuracy {}".format(e + 1, step + 1, avg_loss, avg_acc),
-                      flush=True)
+                #print("Train epoch {}:\n\tstep {}\n\tAvg Loss: {} Avg accuracy {}".format(e + 1, step + 1, avg_loss, avg_acc),
+                      #flush=True)
 
                 total_loss = 0.0
                 total_accuracy = 0.0
                 end = time.time()
                 hours, rem = divmod(end - start, 3600)
                 minutes, seconds = divmod(rem, 60)
-                print("Elapsed: {:0>2}:{:0>2}:{:0>2}".format(int(hours), int(minutes), int(seconds)), flush=True)
+                #print("Elapsed: {:0>2}:{:0>2}:{:0>2}".format(int(hours), int(minutes), int(seconds)), flush=True)
                 start = time.time()
 
             if parsed.save_step is not None:
