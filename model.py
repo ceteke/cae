@@ -180,8 +180,8 @@ class SWWAE:
             fc_out = self.fully_connected_forward()
             self.s_loss = self.softmax_loss(fc_out)
             print("Forming classification optimizier with learning rate{}".format(self.learning_rate))
-            predictions = tf.argmax(fc_out, axis=1)
-            self.accuracy = tf.metrics.accuracy(self.labels,predictions)
+            self.predictions = tf.argmax(fc_out, axis=1)
+            self.accuracy, self.accuracy_op = tf.metrics.accuracy(self.labels,self.predictions)
             tf.summary.scalar('batch accuracy', self.accuracy)
             self.init_optimizer(self.s_loss)
 
@@ -197,17 +197,17 @@ class SWWAE:
             self.train_writer.add_summary(tb_merge, global_step)
             return batch_loss, global_step
         elif self.mode == 'classification':
-            _, batch_loss, batch_acc, global_step, tb_merge = self.sess.run([self.opt_op, self.s_loss, self.accuracy,
-                                                                             self.global_step, self.merged],
-                                                                            feed_dict={self.input: input, self.labels:labels})
+            _, batch_loss, predictions, _, _, global_step, tb_merge = self.sess.run([self.opt_op, self.s_loss, self.predictions, self.accuracy,
+                                                                                    self.accuracy_op, self.global_step, self.merged],
+                                                                                    feed_dict={self.input: input, self.labels:labels})
             self.train_writer.add_summary(tb_merge, global_step)
-            return batch_loss, batch_acc, global_step
+            return batch_loss, predictions, global_step
 
     def eval(self, input, labels=None):
         if self.mode == 'autoencode':
             return self.sess.run([self.ae_loss, self.merged], feed_dict={self.input:input})[0]
         elif self.mode == 'classification':
-            return self.sess.run([self.s_loss, self.accuracy], feed_dict={self.input:input, self.labels:labels})
+            return self.sess.run([self.s_loss, self.predictions], feed_dict={self.input:input, self.labels:labels})
 
     def get_representation(self, input):
         return self.sess.run(self.representation, feed_dict={self.input:input})

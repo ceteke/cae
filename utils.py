@@ -24,3 +24,11 @@ def clear_loss():
     path = 'loss.txt'
     with open(path, 'w') as f:
         f.write('')
+
+def accuracy(labels, predictions, total):
+    corr_count = 0.0
+    for i in range(labels):
+        if labels[i] == predictions[i]:
+            corr_count += 1.0
+
+    total += (corr_count/len(labels))*100.0

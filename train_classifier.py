@@ -3,7 +3,7 @@ from model import SWWAE
 import tensorflow as tf
 from utils import parse_layers
 from arguments import get_class_parser
-from utils import save_loss, clear_loss
+from utils import save_loss, clear_loss, accuracy
 import time
 
 def main():
@@ -39,12 +39,12 @@ def main():
             X_step = X[step]
             y_step = y[step]
 
-            loss, accuracy, global_step = swwae.train(X_step,y_step)
+            loss, preds, global_step = swwae.train(X_step,y_step)
 
             total_loss += loss
-            total_accuracy += accuracy
+            accuracy(y_step, preds, total_accuracy)
             epoch_loss += loss
-            epoch_acc += accuracy
+            accuracy(y_step, preds, epoch_acc)
 
             if (step + 1) % parsed.info_step == 0:
                 avg_loss = total_loss / parsed.info_step
@@ -81,10 +81,10 @@ def main():
         X_test_step = X_test[test_step]
         y_test_step = y_test[test_step]
 
-        loss, acc = swwae.eval(input=X_test_step,labels=y_test_step)
+        loss, preds = swwae.eval(input=X_test_step,labels=y_test_step)
 
         total_loss += loss
-        total_acc += acc
+        accuracy(y_test_step, preds, total_acc)
 
     print("Test average loss: {}, average acc: {}".format(total_loss/test_steps, total_acc/test_steps))
 
