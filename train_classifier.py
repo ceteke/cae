@@ -24,6 +24,7 @@ def main():
     sess = tf.Session()
     swwae = SWWAE(sess,[32,32,3],'classification',layers,fc_layers=fc_layers,learning_rate=parsed.learning_rate,
                   tensorboard_id=parsed.tensorboard_id, num_classes=10, encoder_train=parsed.encoder_train)
+    swwae.restore(parsed.load_dir)
 
     X, y = dataset.get_batches(parsed.batch_size)
     print("Started training.\nTrain steps: {}".format(len(X)))
