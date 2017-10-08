@@ -27,7 +27,7 @@ def clear_loss():
 
 def accuracy(labels, predictions, total):
     corr_count = 0.0
-    for i in range(labels):
+    for i in range(len(labels)):
         if labels[i] == predictions[i]:
             corr_count += 1.0
 
