@@ -222,5 +222,11 @@ class SWWAE:
         print('model saved at {}'.format(save_path), flush=True)
 
     def restore(self, path):
-        saver = tf.train.Saver()
+        if self.mode == 'classification':
+            var_list = []
+            for i, _ in enumerate(self.layers):
+                var_list += tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='conv{}'.format(i+1))
+            saver = tf.train.Saver(var_list=[])
+        else:
+            saver = tf.train.Saver()
         saver.restore(self.sess, save_path=path)
