@@ -25,7 +25,7 @@ class SWWAE:
                                     dtype=self.dtype, name='input_batch')
         self.global_step = tf.Variable(0, trainable=False)
         if self.mode == 'classification':
-            self.labels = tf.placeholder(shape=[None,], dtype=tf.int8, name='labels')
+            self.labels = tf.placeholder(shape=[None,], dtype=tf.int64, name='labels')
 
     def encoder_forward(self):
         encoder_whats = []
