@@ -111,7 +111,7 @@ class SWWAE:
 
     def fully_connected_forward(self):
         representation = self.representation
-        dim = self.representation.get_shape().as_list()[-1]
+        dim = self.representation.get_shape()[1].value
         locals = []
 
         for i, units in enumerate(self.fc_layers):
