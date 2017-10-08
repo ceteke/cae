@@ -162,7 +162,15 @@ class SWWAE:
 
     def init_optimizer(self, loss):
         optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
-        self.opt_op = optimizer.minimize(loss, global_step=self.global_step)
+        if not self.encoder_train and self.mode=='classification':
+            fc_vars = []
+            for i,_ in enumerate(self.fc_layers):
+                fc_vars += tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='fc{}'.format(i+1))
+            fc_vars += tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='softmax_linear')
+            grads = optimizer.compute_gradients(loss,fc_vars)
+            optimizer.apply_gradients(zip(grads, fc_vars))
+        else:
+            self.opt_op = optimizer.minimize(loss, global_step=self.global_step)
 
     def form_graph(self):
         print("Forming encoder", flush=True)
