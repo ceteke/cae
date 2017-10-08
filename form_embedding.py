@@ -14,6 +14,7 @@ dataset.process()
 layers = parse_layers(parsed.layer_str)
 
 sess = tf.Session()
+save_sess = tf.Session()
 swwae = SWWAE(sess,[32,32,3],'embedding',layers)
 
 swwae.restore('output/swwae')
@@ -36,6 +37,7 @@ print(embedding_matrix.shape)
 
 embedding_tensor = tf.stack(embedding_matrix, name='embedding')
 embedding_tensor_variable = tf.Variable(embedding_tensor, trainable=False)
+save_sess.run(tf.variables_initializer([embedding_tensor_variable]))
 saver = tf.train.Saver(var_list=[embedding_tensor_variable])
-saver.save(sess, save_path=parsed.save_path)
+saver.save(save_sess, save_path=parsed.save_path)
 
