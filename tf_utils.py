@@ -10,7 +10,7 @@ def variable_with_weight_decay(name, shape, stddev, wd, dtype, trainable):
                            dtype=dtype, trainable=trainable)
 
     if wd is not None:
-        weight_decay = tf.multiply(tf.nn.l2_loss(var), wd, name='weight_loss') * 0.001
+        weight_decay = tf.multiply(tf.nn.l2_loss(var), wd, name='weight_loss')
         tf.add_to_collection('losses', weight_decay)
 
     return var
