@@ -135,8 +135,8 @@ class SWWAE:
         with tf.variable_scope('softmax_linear'):
             non_linear = locals[-1]
             weights = variable_with_weight_decay('weights', shape=[self.fc_layers[-1], self.num_classes],
-                                                 stddev=0.04, wd=0.001, dtype=self.dtype, trainable=True)
-            biases = variable_on_cpu('biases', [self.num_classes], tf.constant_initializer(0.1), dtype=self.dtype,
+                                                 stddev=1 / 192.0, wd=0.0, dtype=self.dtype, trainable=True)
+            biases = variable_on_cpu('biases', [self.num_classes], tf.constant_initializer(0.0), dtype=self.dtype,
                                      trainable=True)
 
             output = tf.add(tf.matmul(non_linear, weights), biases, name='output')

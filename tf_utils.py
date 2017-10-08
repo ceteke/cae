@@ -2,7 +2,8 @@ import tensorflow as tf
 
 def variable_on_cpu(name, shape, initializer, dtype, trainable):
     with tf.device('/cpu:0'):
-        return tf.get_variable(name=name, shape=shape, initializer=initializer, dtype=dtype, trainable=trainable)
+        return tf.get_variable(name=name, shape=shape, initializer=initializer, dtype=dtype, trainable=trainable,
+                               validate_shape=False)
 
 def variable_with_weight_decay(name, shape, stddev, wd, dtype, trainable):
     var = variable_on_cpu(name=name, shape=shape,
