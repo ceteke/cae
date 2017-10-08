@@ -4,6 +4,8 @@ import tensorflow as tf
 from utils import parse_layers
 from arguments import get_emb_parser
 import numpy as np
+from tensorflow.contrib.tensorboard.plugins import projector
+import os
 
 parser = get_emb_parser()
 parsed = parser.parse_args()
@@ -41,3 +43,15 @@ save_sess.run(tf.variables_initializer([embedding_tensor_variable]))
 saver = tf.train.Saver(var_list=[embedding_tensor_variable])
 saver.save(save_sess, save_path=parsed.save_path)
 
+meta_data = dataset.get_metadata()
+
+with open(os.path.join(parsed.save_path, 'metadata.tsv'), 'w+') as f:
+    f.writelines(meta_data)
+
+summary_writer = tf.train.SummaryWriter(parsed.save_path)
+config = projector.ProjectorConfig()
+
+embedding = config.embeddings.add()
+embedding.tensor_name = embedding_tensor_variable.name
+embedding.metadata_path = os.path.join(parsed.save_path, 'metadata.tsv')
+projector.visualize_embeddings(summary_writer, config)
