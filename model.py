@@ -182,12 +182,14 @@ class SWWAE:
             self.s_loss = self.softmax_loss(fc_out)
             print("Forming classification optimizier with learning rate{}".format(self.learning_rate))
             self.predictions = tf.argmax(fc_out, axis=1)
-            self.accuracy, self.accuracy_op = tf.metrics.accuracy(self.labels,self.predictions)
+            correct_pred = tf.equal(self.labels, self.predictions)
+            self.accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
             tf.summary.scalar('batch accuracy', self.accuracy)
             self.init_optimizer(self.s_loss)
 
         self.merged = tf.summary.merge_all()
-        self.train_writer = tf.summary.FileWriter('tensorboard/{}'.format(self.tensorboard_id), self.sess.graph)
+        self.train_writer = tf.summary.FileWriter('tensorboard/{}/train'.format(self.tensorboard_id), self.sess.graph)
+        self.test_writer = tf.summary.FileWriter('tensorboard/{}/test'.format(self.tensorboard_id), self.sess.graph)
         self.sess.run(tf.global_variables_initializer())
         self.sess.run(tf.local_variables_initializer())
 
@@ -198,17 +200,20 @@ class SWWAE:
             self.train_writer.add_summary(tb_merge, global_step)
             return batch_loss, global_step
         elif self.mode == 'classification':
-            _, batch_loss, predictions, _, _, global_step, tb_merge = self.sess.run([self.opt_op, self.s_loss, self.predictions, self.accuracy,
-                                                                                    self.accuracy_op, self.global_step, self.merged],
-                                                                                    feed_dict={self.input: input, self.labels:labels})
+            _, batch_loss, predictions, accuracy, global_step, tb_merge = self.sess.run([self.opt_op, self.s_loss, self.predictions, self.accuracy,
+                                                                                        self.global_step, self.merged],
+                                                                                        feed_dict={self.input: input, self.labels:labels})
             self.train_writer.add_summary(tb_merge, global_step)
-            return batch_loss, predictions, global_step
+            return batch_loss, accuracy, global_step
 
     def eval(self, input, labels=None):
         if self.mode == 'autoencode':
             return self.sess.run([self.ae_loss, self.merged], feed_dict={self.input:input})[0]
         elif self.mode == 'classification':
-            return self.sess.run([self.s_loss, self.predictions], feed_dict={self.input:input, self.labels:labels})
+            loss, accuracy, tb_merge, global_step = self.sess.run([self.s_loss, self.accuracy, self.merged, self.global_step],
+                                                                  feed_dict={self.input:input, self.labels:labels})
+            self.test_writer.add_summary(tb_merge, global_step)
+            return loss, accuracy
 
     def get_representation(self, input):
         return self.sess.run(self.representation, feed_dict={self.input:input})

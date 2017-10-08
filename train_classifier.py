@@ -29,6 +29,7 @@ def main():
     swwae.restore(parsed.load_dir)
 
     X, y = dataset.get_batches(parsed.batch_size)
+    X_test, y_test = dataset.get_batches(parsed.batch_size, train=False)
     print("Started training.\nTrain steps: {}".format(len(X)))
 
     for e in range(parsed.num_epochs):
@@ -42,19 +43,36 @@ def main():
             X_step = X[step]
             y_step = y[step]
 
-            loss, preds, global_step = swwae.train(X_step,y_step)
+            loss, acc, global_step = swwae.train(X_step,y_step)
 
             total_loss += loss
-            total_accuracy += accuracy(y_step, preds)
+            total_accuracy += acc
             epoch_loss += loss
-            epoch_acc += accuracy(y_step, preds)
+            epoch_acc += acc
 
             if (step + 1) % parsed.info_step == 0:
                 avg_loss = total_loss / parsed.info_step
-                avg_acc = total_accuracy / (parsed.batch_size*parsed.info_step)
+                avg_acc = total_accuracy / parsed.info_step
                 save_loss(avg_loss)
+
+                total_loss_test = 0.0
+                total_acc_test = 0.0
+                test_steps = len(X_test)
+
+                for test_step in range(test_steps):
+                    X_test_step = X_test[test_step]
+                    y_test_step = y_test[test_step]
+
+                    loss, acc = swwae.eval(input=X_test_step, labels=y_test_step)
+
+                    total_loss_test += loss
+                    total_acc_test += acc
+
+                print("Test average loss: {}, average acc: {}".format(total_loss_test / test_steps, total_acc_test / test_steps))
+
                 print("Train epoch {}:\n\tstep {}\n\tAvg Loss: {} Avg accuracy {}".format(e + 1, step + 1, avg_loss, avg_acc),
                       flush=True)
+
                 total_loss = 0.0
                 total_accuracy = 0.0
                 end = time.time()
@@ -67,14 +85,13 @@ def main():
                 if (global_step + 1) % parsed.save_step == 0:
                     swwae.save(path=parsed.output_dir)
 
-        print("Train epoch {}: avg. loss: {}, avg. acc: {}".format(e + 1, epoch_loss / train_steps, epoch_acc / (parsed.batch_size*train_steps)), flush=True)
+        print("Train epoch {}: avg. loss: {}, avg. acc: {}".format(e + 1, epoch_loss / train_steps, epoch_acc / train_steps), flush=True)
         X, y = dataset.get_batches(parsed.batch_size)
 
     if parsed.output_dir is not None:
         swwae.save(path=parsed.output_dir)
 
     print("Starting test..")
-    X_test, y_test = dataset.get_batches(parsed.batch_size, train=False)
 
     total_loss = 0.0
     total_acc = 0.0
@@ -84,12 +101,12 @@ def main():
         X_test_step = X_test[test_step]
         y_test_step = y_test[test_step]
 
-        loss, preds = swwae.eval(input=X_test_step,labels=y_test_step)
+        loss, acc = swwae.eval(input=X_test_step,labels=y_test_step)
 
         total_loss += loss
-        total_acc += accuracy(y_test_step, preds)
+        total_acc += acc
 
-    print("Test average loss: {}, average acc: {}".format(total_loss/test_steps, total_acc/(parsed.batch_size*test_steps)))
+    print("Final Test average loss: {}, average acc: {}".format(total_loss/test_steps, total_acc/test_steps))
 
 
 if __name__ == "__main__":
