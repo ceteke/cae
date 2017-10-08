@@ -17,3 +17,11 @@ swwae = SWWAE(sess,[32,32,3],'embedding',layers)
 
 swwae.restore('output/swwae')
 
+X_test, _ = dataset.get_batches(parsed.batch_size, train=False)
+test_steps = len(X_test)
+
+for test_step in range(test_steps):
+    X_test_step = X_test[test_step]
+
+    representation = swwae.get_representation(input=X_test_step)
+    print(representation.shape)
