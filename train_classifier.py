@@ -18,12 +18,14 @@ def main():
     dataset = CIFAR10Dataset()
     dataset.process()
 
+    encoder_train = True if parsed.encoder_train==1 else False
+
     layers = parse_layers(parsed.layer_str)
     fc_layers = parsed.fc_layers.split('-')
 
     sess = tf.Session()
     swwae = SWWAE(sess,[32,32,3],'classification',layers,fc_layers=fc_layers,learning_rate=parsed.learning_rate,
-                  tensorboard_id=parsed.tensorboard_id, num_classes=10, encoder_train=parsed.encoder_train)
+                  tensorboard_id=parsed.tensorboard_id, num_classes=10, encoder_train=encoder_train)
     swwae.restore(parsed.load_dir)
 
     X, y = dataset.get_batches(parsed.batch_size)

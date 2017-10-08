@@ -43,7 +43,7 @@ def get_class_parser():
     parser.add_argument("-o", "--output", help="Output directory", required=True, dest='output_dir', type=str)
     parser.add_argument("-s", "--save", help="Save steps [optional]", required=False, dest='save_step', type=int)
     parser.add_argument("-m", "--model", help="Load directory", required=True, dest='load_dir', type=str)
-    parser.add_argument("-et", "--encoder_train", help="Train encoder", required=True, dest='encoder_train', type=bool)
+    parser.add_argument("-et", "--encoder_train", help="Train encoder", required=True, dest='encoder_train', type=int)
     parser.add_argument("-l", "--layers", help="Layer string. See README.md", required=False, dest='layer_str',
                         type=str,
                         default='(64)3c-4p-(64)3c-3p-(128)3c-(128)3c-2p-(256)3c-(256)3c-(256)3c-(512)3c-(512)3c-(512)3c-2p')
