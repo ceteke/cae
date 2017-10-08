@@ -171,35 +171,43 @@ class SWWAE:
         if self.mode == 'autoencode':
             print("Forming decoder", flush=True)
             self.decoder_forward()
-            ae_loss = self.ae_loss()
+            self.ae_loss = self.ae_loss()
             print("Forming L2 optimizer with learning rate {}".format(self.learning_rate), flush=True)
-            self.init_optimizer(ae_loss)
+            self.init_optimizer(self.ae_loss)
             tf.summary.image('whatwhere/stacked', tf.concat((self.input, self.decoder_what), axis=2), max_outputs=12)
 
         elif self.mode == 'classification':
             print("Forming fully connected")
             fc_out = self.fully_connected_forward()
-            s_loss = self.softmax_loss(fc_out)
+            self.s_loss = self.softmax_loss(fc_out)
             print("Forming classification optimizier with learning rate{}".format(self.learning_rate))
             predictions = tf.argmax(fc_out, axis=1)
-            accuracy = tf.metrics.accuracy(self.labels,predictions)
-            tf.summary.scalar('batch accuracy', accuracy)
-            self.init_optimizer(s_loss)
+            self.accuracy = tf.metrics.accuracy(self.labels,predictions)
+            tf.summary.scalar('batch accuracy', self.accuracy)
+            self.init_optimizer(self.s_loss)
 
         self.merged = tf.summary.merge_all()
         self.train_writer = tf.summary.FileWriter('tensorboard/{}'.format(self.tensorboard_id), self.sess.graph)
         self.sess.run(tf.global_variables_initializer())
 
-    def train(self, input):
+    def train(self, input, labels=None):
         if self.mode == 'autoencode':
             _, batch_loss, global_step, tb_merge = self.sess.run([self.opt_op, self.ae_loss, self.global_step, self.merged],
                                                        feed_dict={self.input: input})
             self.train_writer.add_summary(tb_merge, global_step)
             return batch_loss, global_step
+        elif self.mode == 'classification':
+            _, batch_loss, batch_acc, global_step, tb_merge = self.sess.run([self.opt_op, self.s_loss, self.accuracy,
+                                                                             self.global_step, self.merged],
+                                                                            feed_dict={self.input: input, self.labels:labels})
+            self.train_writer.add_summary(tb_merge, global_step)
+            return batch_loss, batch_acc, global_step
 
-    def eval(self, input):
+    def eval(self, input, labels=None):
         if self.mode == 'autoencode':
             return self.sess.run([self.ae_loss, self.merged], feed_dict={self.input:input})[0]
+        elif self.mode == 'classification':
+            return self.sess.run([self.s_loss, self.accuracy], feed_dict={self.input:input, self.labels:labels})
 
     def get_representation(self, input):
         return self.sess.run(self.representation, feed_dict={self.input:input})
