@@ -21,6 +21,8 @@ swwae.restore('output/swwae')
 X_test, _ = dataset.get_batches(parsed.batch_size, train=False)
 test_steps = len(X_test)
 
+print("Forming embedding matrix")
+
 for test_step in range(test_steps):
     X_test_step = X_test[test_step]
     representation = swwae.get_representation(input=X_test_step)
@@ -31,4 +33,9 @@ for test_step in range(test_steps):
         embedding_matrix = np.concatenate((embedding_matrix, representation))
 
 print(embedding_matrix.shape)
+
+embedding_tensor = tf.stack(embedding_matrix, name='embedding')
+
+saver = tf.train.Saver(var_list=[embedding_tensor])
+saver.save(sess, save_path=parsed.save_path)
 
