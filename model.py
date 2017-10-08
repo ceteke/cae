@@ -64,8 +64,8 @@ class SWWAE:
             encoder_whats.append(encoder_what)
 
         self.encoder_whats = encoder_whats
-        dim = tf.reduce_prod(tf.shape(encoder_whats[-1])[1:])
-        self.representation = tf.reshape(encoder_whats[-1], [-1, dim])
+        pool_shape = encoder_whats[-1].get_shape()
+        self.representation = tf.reshape(encoder_whats[-1], [-1, (pool_shape[1] * pool_shape[2] * pool_shape[3]).value])
         self.encoder_wheres = encoder_wheres
 
 
