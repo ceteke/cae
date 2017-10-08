@@ -226,7 +226,7 @@ class SWWAE:
             var_list = []
             for i, _ in enumerate(self.layers):
                 var_list += tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='conv{}'.format(i+1))
-            saver = tf.train.Saver(var_list=[])
+            saver = tf.train.Saver(var_list=var_list)
         else:
             saver = tf.train.Saver()
         saver.restore(self.sess, save_path=path)
