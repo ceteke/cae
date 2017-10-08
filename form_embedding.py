@@ -37,18 +37,20 @@ for test_step in range(test_steps):
 
 print(embedding_matrix.shape)
 
+tf_path = parsed.save_path + '/embedding'
+
 embedding_tensor = tf.stack(embedding_matrix, name='embedding')
 embedding_tensor_variable = tf.Variable(embedding_tensor, trainable=False)
 save_sess.run(tf.variables_initializer([embedding_tensor_variable]))
 saver = tf.train.Saver(var_list=[embedding_tensor_variable])
-saver.save(save_sess, save_path=parsed.save_path)
+saver.save(save_sess, save_path=tf_path)
 
 meta_data = dataset.get_metadata()
 
 with open(os.path.join(parsed.save_path, 'metadata.tsv'), 'w+') as f:
     f.writelines(meta_data)
 
-summary_writer = tf.train.SummaryWriter(parsed.save_path)
+summary_writer = tf.train.SummaryWriter(tf_path)
 config = projector.ProjectorConfig()
 
 embedding = config.embeddings.add()
