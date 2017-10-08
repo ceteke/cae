@@ -15,3 +15,5 @@ layers = parse_layers(parsed.layer_str)
 sess = tf.Session()
 swwae = SWWAE(sess,[32,32,3],'embedding',layers)
 
+swwae.restore('output/swwae')
+
