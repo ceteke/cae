@@ -209,7 +209,9 @@ class SWWAE:
 
     def eval(self, input, labels=None):
         if self.mode == 'autoencode':
-            return self.sess.run([self.ae_loss, self.merged], feed_dict={self.input:input})[0]
+            loss, tb_merge, global_step = self.sess.run([self.ae_loss, self.merged, self.global_step], feed_dict={self.input:input})
+            self.test_writer.add_summary(tb_merge, global_step)
+            return loss
         elif self.mode == 'classification':
             loss, accuracy, tb_merge, global_step = self.sess.run([self.s_loss, self.accuracy, self.merged, self.global_step],
                                                                   feed_dict={self.input:input, self.labels:labels})

@@ -24,6 +24,9 @@ def main():
     swwae = SWWAE(sess,[32,32,3],'autoencode',layers,parsed.learning_rate,parsed.lambda_rec,parsed.lambda_M,tf.float32,parsed.tensorboard_id)
 
     X, _ = dataset.get_batches(parsed.batch_size)
+    X_test, _ = dataset.get_batches(parsed.batch_size, train=False)
+    test_steps = len(X_test)
+
     print("Started training.\nTrain steps: {}".format(len(X)))
 
     for e in range(parsed.num_epochs):
@@ -42,8 +45,14 @@ def main():
             if (step + 1) % parsed.info_step == 0:
                 avg_loss = total_loss / parsed.info_step
                 save_loss(avg_loss)
+
+                for test_step in range(test_steps):
+                    X_test_step = X_test[test_step]
+                    swwae.eval(input=X_test_step)
+
                 print("Train epoch {}:\n\tstep {}\n\tavg. L2 Loss: {}".format(e + 1, step + 1, avg_loss),
                       flush=True)
+
                 total_loss = 0.0
                 end = time.time()
                 hours, rem = divmod(end - start, 3600)
@@ -62,10 +71,8 @@ def main():
         swwae.save(path=parsed.output_dir + 'sswae')
 
     print("Starting test..")
-    X_test, _ = dataset.get_batches(parsed.batch_size, train=False)
 
     total_loss = 0.0
-    test_steps = len(X_test)
 
     for test_step in range(test_steps):
         X_test_step = X_test[test_step]
