@@ -19,7 +19,7 @@ sess = tf.Session()
 save_sess = tf.Session()
 swwae = SWWAE(sess,[32,32,3],'embedding',layers)
 
-swwae.restore(os.path.join(parsed.out_dir, 'swwae'))
+swwae.restore(os.path.join(parsed.out_dir))
 
 X_test, _ = dataset.get_batches(parsed.batch_size, train=False)
 test_steps = len(X_test)
