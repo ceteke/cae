@@ -68,7 +68,7 @@ def main():
                     total_loss_test += loss
                     total_acc_test += acc
 
-                print("Test average loss: {}, average acc: {}".format(total_loss_test / test_steps, total_acc_test / test_steps))
+                #print("Test average loss: {}, average acc: {}".format(total_loss_test / test_steps, total_acc_test / test_steps))
 
                 #print("Train epoch {}:\n\tstep {}\n\tAvg Loss: {} Avg accuracy {}".format(e + 1, step + 1, avg_loss, avg_acc),
                       #flush=True)
