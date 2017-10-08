@@ -53,13 +53,14 @@ with open(os.path.join(parsed.save_path, 'metadata.tsv'), 'w+') as f:
 sprite_path = os.path.join(parsed.save_path, 'sprite.png')
 dataset.get_sprite(sprite_path)
 
-summary_writer = tf.summary.FileWriter(tf_path)
 config = projector.ProjectorConfig()
 
 embedding = config.embeddings.add()
 embedding.tensor_name = embedding_tensor_variable.name
 embedding.metadata_path = os.path.join(parsed.save_path, 'metadata.tsv')
-projector.visualize_embeddings(summary_writer, config)
 
 embedding.sprite.image_path = sprite_path
 embedding.sprite.single_image_dim.extend([32, 32])
+
+summary_writer = tf.summary.FileWriter(LOG_DIR)
+projector.visualize_embeddings(summary_writer, config)
