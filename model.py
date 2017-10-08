@@ -189,6 +189,7 @@ class SWWAE:
         self.merged = tf.summary.merge_all()
         self.train_writer = tf.summary.FileWriter('tensorboard/{}'.format(self.tensorboard_id), self.sess.graph)
         self.sess.run(tf.global_variables_initializer())
+        self.sess.run(tf.local_variables_initializer())
 
     def train(self, input, labels=None):
         if self.mode == 'autoencode':
