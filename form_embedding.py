@@ -62,5 +62,5 @@ embedding.metadata_path = os.path.join(parsed.save_path, 'metadata.tsv')
 embedding.sprite.image_path = sprite_path
 embedding.sprite.single_image_dim.extend([32, 32])
 
-summary_writer = tf.summary.FileWriter(LOG_DIR)
+summary_writer = tf.summary.FileWriter(tf_path)
 projector.visualize_embeddings(summary_writer, config)
