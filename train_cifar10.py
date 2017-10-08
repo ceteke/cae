@@ -51,14 +51,14 @@ def main():
                     X_test_step = X_test[test_step]
                     swwae.eval(input=X_test_step)
 
-                print("Train epoch {}:\n\tstep {}\n\tavg. L2 Loss: {}".format(e + 1, step + 1, avg_loss),
-                      flush=True)
+                #print("Train epoch {}:\n\tstep {}\n\tavg. L2 Loss: {}".format(e + 1, step + 1, avg_loss),
+                 #     flush=True)
 
                 total_loss = 0.0
                 end = time.time()
                 hours, rem = divmod(end - start, 3600)
                 minutes, seconds = divmod(rem, 60)
-                print("Elapsed: {:0>2}:{:0>2}:{:0>2}".format(int(hours), int(minutes), int(seconds)), flush=True)
+                #print("Elapsed: {:0>2}:{:0>2}:{:0>2}".format(int(hours), int(minutes), int(seconds)), flush=True)
                 start = time.time()
 
             if parsed.save_step is not None:
