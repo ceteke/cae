@@ -50,4 +50,5 @@ def get_class_parser():
     parser.add_argument("-lr", "--learning_rate", help="Learning rate", required=True, dest='learning_rate', type=float)
     parser.add_argument("-tb", "--tensorboard", help="ID of tensorboard", required=False, dest='tensorboard_id',
                         type=int)
+    parser.add_argument("-fc", "--fully_connected", help="Fully connected layers", required=True, dest='fc_layers', type=str)
     return parser
