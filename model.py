@@ -126,7 +126,8 @@ class SWWAE:
                 biases = variable_on_cpu('biases', [units], tf.constant_initializer(0.1), dtype=self.dtype,
                                          trainable=True)
                 if i == 0:
-                    local = tf.nn.relu(tf.matmul(representation, weights) + biases, name='local')
+                    rep_drop = tf.nn.dropout(representation, 0.5)
+                    local = tf.nn.relu(tf.matmul(rep_drop, weights) + biases, name='local')
                 else:
                     local = tf.nn.relu(tf.matmul(locals[i-1], weights) + biases, name='local')
 
