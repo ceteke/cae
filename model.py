@@ -2,8 +2,8 @@ import tensorflow as tf
 from tf_utils import max_unpool, variable_on_cpu, variable_with_weight_decay
 
 class SWWAE:
-    def __init__(self, sess, image_shape, mode, layers, learning_rate=None, lambda_rec=None, lambda_M=None, dtype=tf.float32,
-                 tensorboard_id=None):
+    def __init__(self, sess, image_shape, mode, layers, fc_layers=None, learning_rate=None, lambda_rec=None,
+                 lambda_M=None, dtype=tf.float32, tensorboard_id=None, num_classes=None, encoder_train=True):
         self.layers = layers
         self.dtype = dtype
         self.mode = mode
@@ -13,6 +13,9 @@ class SWWAE:
         self.learning_rate = learning_rate
         self.image_shape = image_shape
         self.tensorboard_id = tensorboard_id
+        self.fc_layers = fc_layers
+        self.num_classes = num_classes
+        self.encoder_train = encoder_train
 
         self.form_variables()
         self.form_graph()
@@ -22,7 +25,7 @@ class SWWAE:
                                     dtype=self.dtype, name='input_batch')
         self.global_step = tf.Variable(0, trainable=False)
         if self.mode == 'classification':
-            self.labels = tf.placeholder(shape=[32,], dtype=tf.int8, name='labels')
+            self.labels = tf.placeholder(shape=[None,], dtype=tf.int8, name='labels')
 
     def encoder_forward(self):
         encoder_whats = []
@@ -39,11 +42,11 @@ class SWWAE:
 
                 filter = variable_with_weight_decay(name='weights',
                                                      shape=shape,
-                                                     stddev=5e-2, dtype=self.dtype, wd=0.0)
+                                                     stddev=5e-2, dtype=self.dtype, wd=0.0, trainable=self.encoder_train)
 
                 conv = tf.nn.conv2d(encoder_what, filter=filter, strides=[1, 1, 1, 1], padding='SAME')
                 bias = variable_on_cpu('bias', shape=[layer.channel_size], initializer=tf.constant_initializer(0.0),
-                                        dtype=self.dtype)
+                                        dtype=self.dtype, trainable=self.encoder_train)
 
                 pre_activation = tf.nn.bias_add(conv, bias, name='pre_activation')
                 encoder_what = tf.nn.relu(pre_activation, 'activation')
@@ -87,11 +90,11 @@ class SWWAE:
 
                 filter = variable_with_weight_decay(name='weights',
                                                      shape=shape,
-                                                     stddev=5e-2, dtype=self.dtype, wd=0.0)
+                                                     stddev=5e-2, dtype=self.dtype, wd=0.0, trainable=True)
 
                 conv = tf.nn.conv2d(decoder_what, filter=filter, strides=[1, 1, 1, 1], padding='SAME')
                 bias = variable_on_cpu('bias', shape=[bias_size], initializer=tf.constant_initializer(0.0),
-                                        dtype=self.dtype)
+                                        dtype=self.dtype, trainable=True)
 
                 pre_activation = tf.nn.bias_add(conv, bias, name='pre_activation')
                 if i == 0: # Does not use non-linearity at the last layer
@@ -106,11 +109,57 @@ class SWWAE:
 
         self.decoder_what = decoder_what
 
+    def fully_connected_forward(self):
+        representation = self.representation
+        dim = tf.shape(self.representation)[-1]
+        locals = []
+
+        for i, units in enumerate(self.fc_layers):
+            with tf.variable_scope('fc{}'.format(i+1)):
+                if i == 0:
+                    inp_dim = dim
+                else:
+                    inp_dim = self.fc_layers[i-1]
+
+                weights = variable_with_weight_decay('weights', shape=[inp_dim, units],
+                                                      stddev=0.04, wd=0.004, dtype=self.dtype, trainable=True)
+                biases = variable_on_cpu('biases', [units], tf.constant_initializer(0.1), dtype=self.dtype,
+                                         trainable=True)
+                if i == 0:
+                    local = tf.nn.relu(tf.matmul(representation, weights) + biases, name='local')
+                else:
+                    local = tf.nn.relu(tf.matmul(locals[i-1], weights) + biases, name='local')
+
+                locals.append(local)
+
+        with tf.variable_scope('softmax_linear'):
+            non_linear = locals[-1]
+            weights = variable_with_weight_decay('weights', shape=[self.fc_layers[-1], self.num_classes],
+                                                 stddev=0.04, wd=0.004, dtype=self.dtype, trainable=True)
+            biases = variable_on_cpu('biases', [self.num_classes], tf.constant_initializer(0.1), dtype=self.dtype,
+                                     trainable=True)
+
+            output = tf.add(tf.matmul(non_linear, weights), biases, name='output')
+
+        return output
+
+
     def ae_loss(self):
         reconstruction_loss = tf.multiply(self.lambda_rec, tf.nn.l2_loss(tf.subtract(self.input, self.decoder_what)))
         tf.add_to_collection('losses', reconstruction_loss)
-        self.ae_loss = tf.add_n(tf.get_collection('losses'), name='total_loss')
-        tf.summary.scalar('loss', self.ae_loss)
+        ae_loss = tf.add_n(tf.get_collection('losses'), name='total_loss')
+        tf.summary.scalar('loss', ae_loss)
+        return ae_loss
+
+    def softmax_loss(self, fc_out):
+        labels = tf.cast(self.labels, tf.int64)
+        cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
+            labels=labels, logits=fc_out, name='cross_entropy_per_example')
+        cross_entropy_mean = tf.reduce_mean(cross_entropy, name='cross_entropy')
+        tf.add_to_collection('losses', cross_entropy_mean)
+        s_loss = tf.add_n(tf.get_collection('losses'), name='total_loss')
+        tf.summary.scalar('classification loss', s_loss)
+        return s_loss
 
     def init_optimizer(self, loss):
         optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
@@ -122,12 +171,23 @@ class SWWAE:
         if self.mode == 'autoencode':
             print("Forming decoder", flush=True)
             self.decoder_forward()
-            self.ae_loss()
-            print("Forming optimizer with learning rate {}".format(self.learning_rate), flush=True)
-            self.init_optimizer(self.ae_loss)
+            ae_loss = self.ae_loss()
+            print("Forming L2 optimizer with learning rate {}".format(self.learning_rate), flush=True)
+            self.init_optimizer(ae_loss)
             tf.summary.image('whatwhere/stacked', tf.concat((self.input, self.decoder_what), axis=2), max_outputs=12)
-            self.merged = tf.summary.merge_all()
-            self.train_writer = tf.summary.FileWriter('tensorboard/{}'.format(self.tensorboard_id), self.sess.graph)
+
+        elif self.mode == 'classification':
+            print("Forming fully connected")
+            fc_out = self.fully_connected_forward()
+            s_loss = self.softmax_loss(fc_out)
+            print("Forming classification optimizier with learning rate{}".format(self.learning_rate))
+            predictions = tf.argmax(fc_out, axis=1)
+            accuracy = tf.metrics.accuracy(self.labels,predictions)
+            tf.summary.scalar('batch accuracy', accuracy)
+            self.init_optimizer(s_loss)
+
+        self.merged = tf.summary.merge_all()
+        self.train_writer = tf.summary.FileWriter('tensorboard/{}'.format(self.tensorboard_id), self.sess.graph)
         self.sess.run(tf.global_variables_initializer())
 
     def train(self, input):
