@@ -42,15 +42,15 @@ def main():
             loss, preds, global_step = swwae.train(X_step,y_step)
 
             total_loss += loss
-            accuracy(y_step, preds, total_accuracy)
+            total_accuracy += accuracy(y_step, preds)
             epoch_loss += loss
-            accuracy(y_step, preds, epoch_acc)
+            epoch_acc += accuracy(y_step, preds)
 
             if (step + 1) % parsed.info_step == 0:
                 avg_loss = total_loss / parsed.info_step
-                avg_acc = total_accuracy / parsed.info_step
+                avg_acc = total_accuracy / (parsed.batch_size*parsed.info_step)
                 save_loss(avg_loss)
-                print("Train epoch {}:\n\tstep {}\n\tAvg Loss: {} Avg accuracy{}".format(e + 1, step + 1, avg_loss, avg_acc),
+                print("Train epoch {}:\n\tstep {}\n\tAvg Loss: {} Avg accuracy {}".format(e + 1, step + 1, avg_loss, avg_acc),
                       flush=True)
                 total_loss = 0.0
                 total_accuracy = 0.0
@@ -64,7 +64,7 @@ def main():
                 if (global_step + 1) % parsed.save_step == 0:
                     swwae.save(path=parsed.output_dir)
 
-        print("Train epoch {}: avg. loss: {}, avg. acc: {}".format(e + 1, epoch_loss / train_steps, epoch_acc / train_steps), flush=True)
+        print("Train epoch {}: avg. loss: {}, avg. acc: {}".format(e + 1, epoch_loss / train_steps, epoch_acc / (parsed.batch_size*train_steps)), flush=True)
         X, y = dataset.get_batches(parsed.batch_size)
 
     if parsed.output_dir is not None:
@@ -84,9 +84,9 @@ def main():
         loss, preds = swwae.eval(input=X_test_step,labels=y_test_step)
 
         total_loss += loss
-        accuracy(y_test_step, preds, total_acc)
+        total_acc += accuracy(y_test_step, preds)
 
-    print("Test average loss: {}, average acc: {}".format(total_loss/test_steps, total_acc/test_steps))
+    print("Test average loss: {}, average acc: {}".format(total_loss/test_steps, total_acc/(parsed.batch_size*test_steps)))
 
 
 if __name__ == "__main__":

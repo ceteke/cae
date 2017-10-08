@@ -25,10 +25,11 @@ def clear_loss():
     with open(path, 'w') as f:
         f.write('')
 
-def accuracy(labels, predictions, total):
+def accuracy(labels, predictions):
     corr_count = 0.0
+     
     for i in range(len(labels)):
         if labels[i] == predictions[i]:
             corr_count += 1.0
 
-    total += (corr_count/len(labels))*100.0
+    return corr_count
