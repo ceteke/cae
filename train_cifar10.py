@@ -21,7 +21,7 @@ def main():
     layers = parse_layers(parsed.layer_str)
 
     sess = tf.Session()
-    swwae = SWWAE(sess,[32,32,3],'autoencode',layers,parsed.learning_rate,parsed.lambda_rec,parsed.lambda_M,tf.float32,parsed.tensorboard_id)
+    swwae = SWWAE(sess,[32,32,3],'autoencode',layers,parsed.learning_rate,parsed.lambda_rec,parsed.lambda_M,tf.float32,parsed.tensorboard_id,encoder_train=True)
 
     X, _ = dataset.get_batches(parsed.batch_size)
     X_test, _ = dataset.get_batches(parsed.batch_size, train=False)
