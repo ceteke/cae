@@ -64,8 +64,7 @@ class SWWAE:
             encoder_whats.append(encoder_what)
 
         self.encoder_whats = encoder_whats
-        pool_shape = self.encoder_whats[-1].get_shape()
-        self.representation = tf.reshape(self.encoder_whats[-1], [-1, (pool_shape[2] * pool_shape[3]).value])
+        self.representation = tf.contrib.layers.flatten(self.encoder_whats[-1])
         self.encoder_wheres = encoder_wheres
 
 
