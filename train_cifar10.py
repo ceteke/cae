@@ -68,13 +68,13 @@ def main():
 
             if parsed.save_step is not None:
                 if (global_step + 1) % parsed.save_step == 0:
-                    swwae.save(path=parsed.output_dir + 'swwae')
+                    swwae.save(path=parsed.output_dir)
 
         print("Train epoch {}: avg. loss: {}".format(e + 1, epoch_loss / train_steps), flush=True)
         X, _ = dataset.get_batches(parsed.batch_size)
 
     if parsed.output_dir is not None:
-        swwae.save(path=parsed.output_dir + 'sswae')
+        swwae.save(path=parsed.output_dir)
 
     print("Starting test..")
 
