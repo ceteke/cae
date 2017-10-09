@@ -73,12 +73,15 @@ class SWWAE:
         if len(self.fc_ae_layers) == 0:
             self.representation = self.flatten
         else:
+            self.encoder_fcs = []
             with tf.name_scope('encoder_fc'):
                 for i, layer in enumerate(self.fc_ae_layers):
                     if i == 0:
-                        self.representation = tf.layers.dense(self.flatten,self.fc_ae_layers[i], activation=tf.nn.relu)
+                        encoder_fc = tf.layers.dense(self.flatten,self.fc_ae_layers[i], activation=tf.nn.relu)
                     else:
-                        self.representation = tf.layers.dense(self.representation,self.fc_ae_layers[i], activation=tf.nn.relu)
+                        encoder_fc = tf.layers.dense(encoder_fc,self.fc_ae_layers[i], activation=tf.nn.relu)
+                    self.encoder_fcs.append(encoder_fc)
+            self.representation = encoder_fc
 
     def decoder_forward(self):
         if len(self.fc_ae_layers) == 0:
@@ -91,6 +94,11 @@ class SWWAE:
                         decoder_what = tf.layers.dense(decoder_what,self.flatten.get_shape()[1].value,activation=tf.nn.relu)
                     else:
                         decoder_what = tf.layers.dense(decoder_what,self.fc_ae_layers[i],activation=tf.nn.relu)
+
+                        fc_middle_loss = tf.multiply(self.lambda_M,
+                                                  tf.nn.l2_loss(tf.subtract(decoder_what, self.encoder_fcs[i - 1])))
+                        tf.add_to_collection('losses', fc_middle_loss)
+
                 pool_shape = self.encoder_whats[-1].get_shape()
                 decoder_what = tf.reshape(decoder_what, [-1, pool_shape[1].value, pool_shape[2].value, pool_shape[3].value])
 
@@ -242,7 +250,7 @@ class SWWAE:
             return loss, accuracy
 
     def get_representation(self, input):
-        return self.sess.run(self.representation, feed_dict={self.input:input})
+        return self.sess.run(self.representation, feed_dict={self.input:input, self.dropout_rate:0.0})
 
     def save(self, path, ow=True):
         saver = tf.train.Saver()
