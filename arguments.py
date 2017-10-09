@@ -18,6 +18,8 @@ def get_parser():
     parser.add_argument("-tb", "--tensorboard", help="ID of tensorboard", required=False, dest='tensorboard_id',
                         type=int)
     parser.add_argument("-o", "--output", help="Output directory [optional]", required=False, dest='output_dir', type=str)
+    parser.add_argument("-fc", "--full_connected", help="Fully connected layers", required=False, dest='fc_layers',
+                        type=str)
     parser.add_argument("-s", "--save", help="Save steps [optional]", required=False, dest='save_step', type=int)
 
     return parser

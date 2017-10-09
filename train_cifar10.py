@@ -19,10 +19,15 @@ def main():
     dataset.process()
 
     layers = parse_layers(parsed.layer_str)
+    if parsed.fc_layers is not None:
+        fc_layers = [int(x) for x in parsed.fc_layers.split('-')]
+    else:
+        fc_layers = []
 
     sess = tf.Session()
     swwae = SWWAE(sess,[32,32,3],'autoencode',layers,learning_rate=parsed.learning_rate,lambda_rec=parsed.lambda_rec,
-                  lambda_M=parsed.lambda_M,dtype=tf.float32, tensorboard_id=parsed.tensorboard_id, encoder_train=True)
+                  lambda_M=parsed.lambda_M,dtype=tf.float32, tensorboard_id=parsed.tensorboard_id, encoder_train=True,
+                  fc_ae_layers=fc_layers)
 
     X, _ = dataset.get_batches(parsed.batch_size)
     X_test, _ = dataset.get_batches(parsed.batch_size, train=False)
