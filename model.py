@@ -106,10 +106,11 @@ class SWWAE:
             with tf.variable_scope('deconv{}'.format(i+1)):
                 if i == 0: # Does not use non-linearity at the last layer
                     shape = self.image_shape[-1]
-                    decoder_what = tf.layers.conv2d_transpose(decoder_what, shape, [layer.filter_size, layer.filter_size])
+                    decoder_what = tf.layers.conv2d_transpose(decoder_what, shape, layer.filter_size,)
                 else:
                     shape = self.layers[i - 1].channel_size
-                    decoder_what = tf.layers.conv2d_transpose(decoder_what, shape, [layer.filter_size, layer.filter_size],
+                    print(decoder_what)
+                    decoder_what = tf.layers.conv2d_transpose(decoder_what, shape, layer.filter_size,
                                                activation=tf.nn.relu)
 
                 decoder_whats.append(decoder_what)
