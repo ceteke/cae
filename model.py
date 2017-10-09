@@ -92,8 +92,11 @@ class SWWAE:
                 for i in range(len(self.fc_ae_layers)-1, -1, -1):
                     if i == 0:
                         decoder_what = tf.layers.dense(decoder_what,self.flatten.get_shape()[1].value,activation=tf.nn.relu)
+                        fc_middle_loss = tf.multiply(self.lambda_M,
+                                                     tf.nn.l2_loss(tf.subtract(decoder_what, self.flatten)))
+                        tf.add_to_collection('losses', fc_middle_loss)
                     else:
-                        decoder_what = tf.layers.dense(decoder_what,self.fc_ae_layers[i],activation=tf.nn.relu)
+                        decoder_what = tf.layers.dense(decoder_what,self.fc_ae_layers[i-1],activation=tf.nn.relu)
 
                         fc_middle_loss = tf.multiply(self.lambda_M,
                                                   tf.nn.l2_loss(tf.subtract(decoder_what, self.encoder_fcs[i - 1])))
