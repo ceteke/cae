@@ -44,8 +44,7 @@ class SWWAE:
                 filter = variable_on_cpu(name='weights', shape=shape,dtype=self.dtype, trainable=self.encoder_train)
 
                 conv = tf.nn.conv2d(encoder_what, filter=filter, strides=[1, 1, 1, 1], padding='SAME')
-                bias = variable_on_cpu('bias', shape=[layer.channel_size], dtype=self.dtype, trainable=self.encoder_train,
-                                       initializer=tf.constant_initializer(0.0))
+                bias = variable_on_cpu('bias', shape=[layer.channel_size], dtype=self.dtype, trainable=self.encoder_train)
 
                 pre_activation = tf.nn.bias_add(conv, bias, name='pre_activation')
                 encoder_what = tf.nn.relu(pre_activation, 'activation')
@@ -111,8 +110,7 @@ class SWWAE:
                 filter = variable_on_cpu(name='weights', shape=shape, dtype=self.dtype, trainable=True)
 
                 conv = tf.nn.conv2d(decoder_what, filter=filter, strides=[1, 1, 1, 1], padding='SAME')
-                bias = variable_on_cpu('bias', shape=[bias_size], initializer=tf.constant_initializer(0.0),
-                                        dtype=self.dtype, trainable=True)
+                bias = variable_on_cpu('bias', shape=[bias_size], dtype=self.dtype, trainable=True)
 
                 pre_activation = tf.nn.bias_add(conv, bias, name='pre_activation')
                 if i == 0: # Does not use non-linearity at the last layer
@@ -140,7 +138,7 @@ class SWWAE:
                     inp_dim = self.fc_layers[i-1]
 
                 weights = variable_on_cpu('weights', shape=[inp_dim, units], dtype=self.dtype, trainable=True)
-                biases = variable_on_cpu('biases', shape=[units], initializer=tf.constant_initializer(0.0),
+                biases = variable_on_cpu('biases', shape=[units],
                                          dtype=self.dtype, trainable=True)
                 if i == 0:
                     rep_drop = tf.nn.dropout(representation, 0.5)
@@ -154,7 +152,7 @@ class SWWAE:
             non_linear = locals[-1]
             weights = variable_on_cpu('weights', shape=[self.fc_layers[-1], self.num_classes], dtype=self.dtype,
                                       trainable=True)
-            biases = variable_on_cpu('biases', shape=[self.num_classes], initializer=tf.constant_initializer(0.0), dtype=self.dtype,
+            biases = variable_on_cpu('biases', shape=[self.num_classes], dtype=self.dtype,
                                      trainable=True)
 
             output = tf.add(tf.matmul(non_linear, weights), biases, name='output')

@@ -2,7 +2,7 @@ import tensorflow as tf
 
 def variable_on_cpu(name, shape, dtype, trainable, initializer=None):
     if initializer is None:
-        initializer = tf.random_uniform_initializer(minval=-0.001,maxval=0.001)
+        initializer = tf.random_uniform_initializer(minval=-0.1,maxval=0.1)
     with tf.device('/cpu:0'):
         return tf.get_variable(name=name, shape=shape, initializer=initializer, dtype=dtype, trainable=trainable)
 
