@@ -84,12 +84,12 @@ class SWWAE:
             decoder_what = self.encoder_whats[-1]
         else:
             with tf.name_scope('decoder_fc'):
-                for i in range(len(self.fc_ae_layers)-2, -1, -1):
-                    if i == len(self.fc_ae_layers) - 2:
-                        decoder_what = tf.layers.dense(self.representation,self.fc_ae_layers[i],activation=tf.nn.relu)
+                decoder_what = tf.layers.dropout(self.representation)
+                for i in range(len(self.fc_ae_layers)-1, -1, -1):
+                    if i == 0:
+                        decoder_what = tf.layers.dense(decoder_what,self.flatten.get_shape()[1].value,activation=tf.nn.relu)
                     else:
                         decoder_what = tf.layers.dense(decoder_what,self.fc_ae_layers[i],activation=tf.nn.relu)
-                decoder_what = tf.layers.dense(decoder_what,self.flatten.get_shape()[1].value,activation=tf.nn.relu)
                 pool_shape = self.encoder_whats[-1].get_shape()
                 decoder_what = tf.reshape(decoder_what, [-1, pool_shape[1].value, pool_shape[2].value, pool_shape[3].value])
 
