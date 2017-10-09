@@ -24,6 +24,7 @@ class SWWAE:
     def form_variables(self):
         self.input = tf.placeholder(shape=[None, self.image_shape[0], self.image_shape[1], self.image_shape[2]],
                                     dtype=self.dtype, name='input_batch')
+        self.dropout_rate = tf.placeholder(shape=(), dtype=tf.float32)
         self.global_step = tf.Variable(0, trainable=False)
         if self.mode == 'classification':
             self.labels = tf.placeholder(shape=[None,], dtype=tf.int64, name='labels')
@@ -72,7 +73,7 @@ class SWWAE:
         if len(self.fc_ae_layers) == 0:
             self.representation = self.flatten
         else:
-            with tf.name_scope('dencoder_fc'):
+            with tf.name_scope('encoder_fc'):
                 for i, layer in enumerate(self.fc_ae_layers):
                     if i == 0:
                         self.representation = tf.layers.dense(self.flatten,self.fc_ae_layers[i], activation=tf.nn.relu)
@@ -219,24 +220,24 @@ class SWWAE:
     def train(self, input, labels=None):
         if self.mode == 'autoencode':
             _, batch_loss, global_step, tb_merge = self.sess.run([self.opt_op, self.ae_loss, self.global_step, self.merged],
-                                                       feed_dict={self.input: input})
+                                                       feed_dict={self.input: input, self.dropout_rate: 0.5})
             self.train_writer.add_summary(tb_merge, global_step)
             return batch_loss, global_step
         elif self.mode == 'classification':
             _, batch_loss, predictions, accuracy, global_step, tb_merge = self.sess.run([self.opt_op, self.s_loss, self.predictions, self.accuracy,
                                                                                         self.global_step, self.merged],
-                                                                                        feed_dict={self.input: input, self.labels:labels})
+                                                                                        feed_dict={self.input: input, self.labels:labels, self.dropout_rate:0.5})
             self.train_writer.add_summary(tb_merge, global_step)
             return batch_loss, accuracy, global_step
 
     def eval(self, input, labels=None):
         if self.mode == 'autoencode':
-            loss, tb_merge, global_step = self.sess.run([self.ae_loss, self.merged, self.global_step], feed_dict={self.input:input})
+            loss, tb_merge, global_step = self.sess.run([self.ae_loss, self.merged, self.global_step], feed_dict={self.input:input, self.dropout_rate:0.0})
             self.test_writer.add_summary(tb_merge, global_step)
             return loss
         elif self.mode == 'classification':
             loss, accuracy, tb_merge, global_step = self.sess.run([self.s_loss, self.accuracy, self.merged, self.global_step],
-                                                                  feed_dict={self.input:input, self.labels:labels})
+                                                                  feed_dict={self.input:input, self.labels:labels, self.dropout_rate:0.0})
             self.test_writer.add_summary(tb_merge, global_step)
             return loss, accuracy
 
