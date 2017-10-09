@@ -38,21 +38,7 @@ class SWWAE:
         for i, layer in enumerate(self.layers):
             # convn
             with tf.variable_scope('conv{}'.format(i+1)):
-                if i == 0:
-                    shape = [layer.filter_size, layer.filter_size, self.image_shape[-1], layer.channel_size]
-                else:
-                    shape = [layer.filter_size, layer.filter_size, self.layers[i-1].channel_size, layer.channel_size]
-
-                filter = variable_with_weight_decay(name='weights',
-                                                     shape=shape,
-                                                     stddev=5e-2, dtype=self.dtype, wd=0.0, trainable=self.encoder_train)
-
-                conv = tf.nn.conv2d(encoder_what, filter=filter, strides=[1, 1, 1, 1], padding='SAME')
-                bias = variable_on_cpu('bias', shape=[layer.channel_size], initializer=tf.constant_initializer(0.0),
-                                        dtype=self.dtype, trainable=self.encoder_train)
-
-                pre_activation = tf.nn.bias_add(conv, bias, name='pre_activation')
-                encoder_what = tf.nn.relu(pre_activation, 'activation')
+                encoder_what = tf.layers.conv2d(encoder_what, layer.channel_size, [layer.filter_size, layer.filter_size])
 
             # pooln
             if layer.pool_size is not None:
@@ -117,28 +103,14 @@ class SWWAE:
                                           [1, layer.pool_size, layer.pool_size, 1],
                                           scope='unpool{}'.format(i+1))
 
-            with tf.variable_scope('decoder_conv{}'.format(i+1)):
-                if i == 0:
-                    shape = [layer.filter_size, layer.filter_size, self.image_shape[-1], layer.channel_size]
-                    bias_size = self.image_shape[-1]
-                else:
-                    shape = [layer.filter_size, layer.filter_size, self.layers[i-1].channel_size, layer.channel_size]
-                    bias_size = self.layers[i-1].channel_size
-
-                filter = variable_with_weight_decay(name='weights',
-                                                     shape=shape,
-                                                     stddev=5e-2, dtype=self.dtype, wd=0.0, trainable=True)
-
-                conv = tf.nn.conv2d_transpose(decoder_what, filter=filter, strides=[1, 1, 1, 1], padding='SAME')
-                bias = variable_on_cpu('bias', shape=[bias_size], initializer=tf.constant_initializer(0.0),
-                                        dtype=self.dtype, trainable=True)
-
-                pre_activation = tf.nn.bias_add(conv, bias, name='pre_activation')
+            with tf.variable_scope('deconv{}'.format(i+1)):
                 if i == 0: # Does not use non-linearity at the last layer
-                    decoder_what = pre_activation
+                    shape = self.image_shape[-1]
+                    decoder_what = tf.layers.conv2d_transpose(decoder_what, shape, [layer.filter_size, layer.filter_size])
                 else:
-                    decoder_what = tf.nn.relu(pre_activation, 'activation')
-                    decoder_what = tf.layers.dropout(decoder_what, self.conv_dropout)
+                    shape = self.layers[i - 1].channel_size
+                    decoder_what = tf.layers.conv2d_transpose(decoder_what, shape, [layer.filter_size, layer.filter_size],
+                                               activation=tf.nn.relu)
 
                 decoder_whats.append(decoder_what)
 
