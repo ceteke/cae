@@ -1,5 +1,5 @@
 import tensorflow as tf
-from tf_utils import max_unpool, variable_on_cpu, variable_with_weight_decay
+from tf_utils import max_unpool, variable_on_cpu
 
 class SWWAE:
     def __init__(self, sess, image_shape, mode, layers, fc_ae_layers=None, fc_layers=None, learning_rate=None, lambda_rec=None,
@@ -41,13 +41,11 @@ class SWWAE:
                 else:
                     shape = [layer.filter_size, layer.filter_size, self.layers[i-1].channel_size, layer.channel_size]
 
-                filter = variable_with_weight_decay(name='weights',
-                                                     shape=shape,
-                                                     stddev=5e-2, dtype=self.dtype, wd=0.0, trainable=self.encoder_train)
+                filter = variable_on_cpu(name='weights', shape=shape,dtype=self.dtype, trainable=self.encoder_train)
 
                 conv = tf.nn.conv2d(encoder_what, filter=filter, strides=[1, 1, 1, 1], padding='SAME')
-                bias = variable_on_cpu('bias', shape=[layer.channel_size], initializer=tf.constant_initializer(0.0),
-                                        dtype=self.dtype, trainable=self.encoder_train)
+                bias = variable_on_cpu('bias', shape=[layer.channel_size], dtype=self.dtype, trainable=self.encoder_train,
+                                       initializer=tf.constant_initializer(0.0))
 
                 pre_activation = tf.nn.bias_add(conv, bias, name='pre_activation')
                 encoder_what = tf.nn.relu(pre_activation, 'activation')
@@ -110,9 +108,7 @@ class SWWAE:
                     shape = [layer.filter_size, layer.filter_size, layer.channel_size, self.layers[i-1].channel_size]
                     bias_size = self.layers[i-1].channel_size
 
-                filter = variable_with_weight_decay(name='weights',
-                                                     shape=shape,
-                                                     stddev=5e-2, dtype=self.dtype, wd=0.0, trainable=True)
+                filter = variable_on_cpu(name='weights', shape=shape, dtype=self.dtype, trainable=True)
 
                 conv = tf.nn.conv2d(decoder_what, filter=filter, strides=[1, 1, 1, 1], padding='SAME')
                 bias = variable_on_cpu('bias', shape=[bias_size], initializer=tf.constant_initializer(0.0),
@@ -143,10 +139,9 @@ class SWWAE:
                 else:
                     inp_dim = self.fc_layers[i-1]
 
-                weights = variable_with_weight_decay('weights', shape=[inp_dim, units],
-                                                      stddev=0.04, wd=0.001, dtype=self.dtype, trainable=True)
-                biases = variable_on_cpu('biases', [units], tf.constant_initializer(0.1), dtype=self.dtype,
-                                         trainable=True)
+                weights = variable_on_cpu('weights', shape=[inp_dim, units], dtype=self.dtype, trainable=True)
+                biases = variable_on_cpu('biases', shape=[units], initializer=tf.constant_initializer(0.0),
+                                         dtype=self.dtype, trainable=True)
                 if i == 0:
                     rep_drop = tf.nn.dropout(representation, 0.5)
                     local = tf.nn.relu(tf.matmul(rep_drop, weights) + biases, name='local')
@@ -157,9 +152,9 @@ class SWWAE:
 
         with tf.variable_scope('softmax_linear'):
             non_linear = locals[-1]
-            weights = variable_with_weight_decay('weights', shape=[self.fc_layers[-1], self.num_classes],
-                                                 stddev=1 / 192.0, wd=0.0, dtype=self.dtype, trainable=True)
-            biases = variable_on_cpu('biases', [self.num_classes], tf.constant_initializer(0.0), dtype=self.dtype,
+            weights = variable_on_cpu('weights', shape=[self.fc_layers[-1], self.num_classes], dtype=self.dtype,
+                                      trainable=True)
+            biases = variable_on_cpu('biases', shape=[self.num_classes], initializer=tf.constant_initializer(0.0), dtype=self.dtype,
                                      trainable=True)
 
             output = tf.add(tf.matmul(non_linear, weights), biases, name='output')

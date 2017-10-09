@@ -13,11 +13,16 @@ parsed = parser.parse_args()
 dataset = CIFAR10Dataset()
 dataset.process()
 
+if parsed.fc_layers is not None:
+    fc_layers = [int(x) for x in parsed.fc_layers.split('-')]
+else:
+    fc_layers = []
+
 layers = parse_layers(parsed.layer_str)
 
 sess = tf.Session()
 save_sess = tf.Session()
-swwae = SWWAE(sess,[32,32,3],'embedding',layers)
+swwae = SWWAE(sess,[32,32,3],'embedding',layers,fc_layers)
 
 swwae.restore(os.path.join(parsed.out_dir))
 

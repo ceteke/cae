@@ -34,6 +34,8 @@ def get_emb_parser():
 
     parser.add_argument("-s", "--save", help="Save embedding path", required=False, dest='save_path',
                         type=str, default='embedding')
+    parser.add_argument("-fc", "--full_connected", help="Fully connected layers", required=False, dest='fc_layers',
+                        type=str)
 
     return parser
 
