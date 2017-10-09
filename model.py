@@ -214,7 +214,7 @@ class SWWAE:
             self.ae_loss = self.ae_loss()
             print("Forming L2 optimizer with learning rate {}".format(self.learning_rate), flush=True)
             self.init_optimizer(self.ae_loss)
-            tf.summary.image('whatwhere/stacked', tf.concat((self.input, self.decoder_what), axis=2), max_outputs=12)
+            tf.summary.image('whatwhere/stacked', tf.concat((self.input, self.decoder_what), axis=2))
 
         elif self.mode == 'classification':
             print("Forming fully connected")
