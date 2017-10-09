@@ -119,17 +119,17 @@ class SWWAE:
 
             with tf.variable_scope('decoder_conv{}'.format(i+1)):
                 if i == 0:
-                    shape = [layer.filter_size, layer.filter_size, layer.channel_size, self.image_shape[-1]]
+                    shape = [layer.filter_size, layer.filter_size, self.image_shape[-1], layer.channel_size]
                     bias_size = self.image_shape[-1]
                 else:
-                    shape = [layer.filter_size, layer.filter_size, layer.channel_size, self.layers[i-1].channel_size]
+                    shape = [layer.filter_size, layer.filter_size, self.layers[i-1].channel_size, layer.channel_size]
                     bias_size = self.layers[i-1].channel_size
 
                 filter = variable_with_weight_decay(name='weights',
                                                      shape=shape,
                                                      stddev=5e-2, dtype=self.dtype, wd=0.0, trainable=True)
 
-                conv = tf.nn.conv2d(decoder_what, filter=filter, strides=[1, 1, 1, 1], padding='SAME')
+                conv = tf.nn.conv2d_transpose(decoder_what, filter=filter, strides=[1, 1, 1, 1], padding='SAME')
                 bias = variable_on_cpu('bias', shape=[bias_size], initializer=tf.constant_initializer(0.0),
                                         dtype=self.dtype, trainable=True)
 
