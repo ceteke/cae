@@ -72,24 +72,26 @@ class SWWAE:
         if len(self.fc_ae_layers) == 0:
             self.representation = self.flatten
         else:
-            for i, layer in enumerate(self.fc_ae_layers):
-                if i == 0:
-                    self.representation = tf.layers.dense(self.flatten,self.fc_ae_layers[i], activation=tf.nn.relu)
-                else:
-                    self.representation = tf.layers.dense(self.representation,self.fc_ae_layers[i], activation=tf.nn.relu)
+            with tf.name_scope('dencoder_fc'):
+                for i, layer in enumerate(self.fc_ae_layers):
+                    if i == 0:
+                        self.representation = tf.layers.dense(self.flatten,self.fc_ae_layers[i], activation=tf.nn.relu)
+                    else:
+                        self.representation = tf.layers.dense(self.representation,self.fc_ae_layers[i], activation=tf.nn.relu)
 
     def decoder_forward(self):
         if len(self.fc_ae_layers) == 0:
             decoder_what = self.encoder_whats[-1]
         else:
-            for i in range(len(self.fc_ae_layers)-2, -1, -1):
-                if i == len(self.fc_ae_layers) - 2:
-                    decoder_what = tf.layers.dense(self.representation,self.fc_ae_layers[i],activation=tf.nn.relu)
-                else:
-                    decoder_what = tf.layers.dense(decoder_what,self.fc_ae_layers[i],activation=tf.nn.relu)
-            decoder_what = tf.layers.dense(decoder_what,self.flatten.get_shape()[1].value,activation=tf.nn.relu)
-            pool_shape = self.encoder_whats[-1].get_shape()
-            decoder_what = tf.reshape(decoder_what, [-1, pool_shape[1].value, pool_shape[2].value, pool_shape[3].value])
+            with tf.name_scope('decoder_fc'):
+                for i in range(len(self.fc_ae_layers)-2, -1, -1):
+                    if i == len(self.fc_ae_layers) - 2:
+                        decoder_what = tf.layers.dense(self.representation,self.fc_ae_layers[i],activation=tf.nn.relu)
+                    else:
+                        decoder_what = tf.layers.dense(decoder_what,self.fc_ae_layers[i],activation=tf.nn.relu)
+                decoder_what = tf.layers.dense(decoder_what,self.flatten.get_shape()[1].value,activation=tf.nn.relu)
+                pool_shape = self.encoder_whats[-1].get_shape()
+                decoder_what = tf.reshape(decoder_what, [-1, pool_shape[1].value, pool_shape[2].value, pool_shape[3].value])
 
         decoder_whats = []
         for i in range(len(self.layers)-1, -1, -1):
