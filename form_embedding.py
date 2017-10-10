@@ -1,4 +1,4 @@
-from datapy.data.datasets import CIFAR10Dataset
+from datapy.data.datasets import CIFAR10Dataset, MNISTDataset
 from model import SWWAE
 import tensorflow as tf
 from utils import parse_layers
@@ -10,8 +10,14 @@ import os
 parser = get_emb_parser()
 parsed = parser.parse_args()
 
-dataset = CIFAR10Dataset()
-dataset.process()
+if parsed.dataset == 'cifar10':
+    dataset = CIFAR10Dataset()
+    dataset.process()
+    img_size = [32,32,3]
+else:
+    dataset = MNISTDataset()
+    dataset.process()
+    img_size = [28,28,1]
 
 if parsed.fc_layers is not None:
     fc_layers = [int(x) for x in parsed.fc_layers.split('-')]
@@ -22,7 +28,7 @@ layers = parse_layers(parsed.layer_str)
 
 sess = tf.Session()
 save_sess = tf.Session()
-swwae = SWWAE(sess,[32,32,3],'embedding',layers,fc_layers)
+swwae = SWWAE(sess,img_size,'embedding',layers,fc_layers)
 
 swwae.restore(os.path.join(parsed.out_dir))
 

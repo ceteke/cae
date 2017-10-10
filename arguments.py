@@ -21,6 +21,8 @@ def get_parser():
     parser.add_argument("-fc", "--full_connected", help="Fully connected layers", required=False, dest='fc_layers',
                         type=str)
     parser.add_argument("-s", "--save", help="Save steps [optional]", required=False, dest='save_step', type=int)
+    parser.add_argument("-ds", "--dataset", help="Which dataset", required=True, dest='dataset',
+                        type=str)
 
     return parser
 
@@ -35,6 +37,8 @@ def get_emb_parser():
     parser.add_argument("-s", "--save", help="Save embedding path", required=False, dest='save_path',
                         type=str, default='embedding')
     parser.add_argument("-fc", "--full_connected", help="Fully connected layers", required=False, dest='fc_layers',
+                        type=str)
+    parser.add_argument("-ds", "--dataset", help="Which dataset", required=True, dest='dataset',
                         type=str)
 
     return parser
