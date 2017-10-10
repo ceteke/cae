@@ -33,7 +33,9 @@ swwae = SWWAE(sess,img_size,'embedding',layers,fc_layers)
 swwae.restore(os.path.join(parsed.out_dir))
 
 X_train, y_train = dataset.get_batches(parsed.batch_size,shuffle=False)
+X_test, _ = dataset.get_batches(parsed.batch_size,train=False)
 train_steps = len(X_train)
+test_steps = len(X_test)
 
 print("Forming training embedding matrix")
 
@@ -48,9 +50,22 @@ for train_step in range(train_steps):
 
 print(embedding_matrix.shape)
 
+print("Forming test embedding matrix")
+
+for test_step in range(test_steps):
+    X_test_step = X_test[test_step]
+    representation = swwae.get_representation(input=X_test_step)
+
+    if test_step == 0:
+        test_embedding_matrix = representation
+    else:
+        test_embedding_matrix = np.concatenate((test_embedding_matrix, representation))
+
+print(test_embedding_matrix.shape)
+
 clf = svm.LinearSVC()
 clf.fit(embedding_matrix, dataset.training_labels)
-y_pred = clf.predict(dataset.test_data)
+y_pred = clf.predict(test_embedding_matrix)
 
 acc = metrics.accuracy_score(dataset.test_labels, y_pred)
 
