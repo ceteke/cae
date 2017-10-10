@@ -1,10 +1,11 @@
-from datapy.data.datasets import CIFAR10Dataset
+from datapy.data.datasets import CIFAR10Dataset, MNISTDataset
 from model import SWWAE
 import tensorflow as tf
 from utils import parse_layers
 from arguments import get_parser
 from utils import save_loss, clear_loss
 import time
+from tensorflow.examples.tutorials.mnist import input_data
 
 def main():
     clear_loss()
@@ -15,8 +16,16 @@ def main():
             (parsed.output_dir is not None and parsed.save_step is not None)), "Save step and output directory must be " \
                                                                                "null at the same time or not null at the same time"
 
-    dataset = CIFAR10Dataset()
-    dataset.process()
+    ds_type = parsed.dataset
+
+    if ds_type == 'cifar10':
+        dataset = CIFAR10Dataset()
+        dataset.process()
+        img_shape = [32,32,3]
+    else:
+        dataset = MNISTDataset()
+        dataset.process()
+        img_shape = [28,28,1]
 
     layers = parse_layers(parsed.layer_str)
     if parsed.fc_layers is not None:
@@ -25,7 +34,7 @@ def main():
         fc_layers = []
 
     sess = tf.Session()
-    swwae = SWWAE(sess,[32,32,3],'autoencode',layers,learning_rate=parsed.learning_rate,lambda_rec=parsed.lambda_rec,
+    swwae = SWWAE(sess,img_shape,'autoencode',layers,learning_rate=parsed.learning_rate,lambda_rec=parsed.lambda_rec,
                   lambda_M=parsed.lambda_M,dtype=tf.float32, tensorboard_id=parsed.tensorboard_id, encoder_train=True,
                   fc_ae_layers=fc_layers)
 
