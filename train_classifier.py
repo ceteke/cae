@@ -48,7 +48,7 @@ for train_step in range(train_steps):
 
 print(embedding_matrix.shape)
 
-clf = svm.SVC(decision_function_shape='ovo', verbose=True)
+clf = svm.LinearSVC()
 clf.fit(embedding_matrix, dataset.training_labels)
 y_pred = clf.predict(dataset.test_data)
 
