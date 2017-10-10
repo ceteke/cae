@@ -71,7 +71,7 @@ embedding.tensor_name = embedding_tensor_variable.name
 embedding.metadata_path = os.path.join(parsed.save_path, 'metadata.tsv')
 
 embedding.sprite.image_path = sprite_path
-embedding.sprite.single_image_dim.extend([32, 32])
+embedding.sprite.single_image_dim.extend(img_size[0:2])
 
 summary_writer = tf.summary.FileWriter(parsed.save_path)
 projector.visualize_embeddings(summary_writer, config)
