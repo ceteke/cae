@@ -31,7 +31,7 @@ def max_unpool(pool, ind, ksize, scope='unpool'):
         output_shape = [input_shape[0].value, input_shape[1].value * ksize[1], input_shape[2].value * ksize[2],
                         input_shape[3].value]
 
-        flat_input_size = tf.cumprod(input_shape.as_list())[-1]
+        flat_input_size = input_shape[0].value * input_shape[1].value * input_shape[2].value * input_shape[3].value
         flat_output_shape = tf.stack([output_shape[0], output_shape[1] * output_shape[2] * output_shape[3]])
 
         pool_ = tf.reshape(pool, tf.stack([flat_input_size]))
