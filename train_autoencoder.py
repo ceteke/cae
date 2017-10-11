@@ -38,6 +38,9 @@ def main():
                   lambda_M=parsed.lambda_M,dtype=tf.float32, tensorboard_id=parsed.tensorboard_id, encoder_train=True,
                   fc_ae_layers=fc_layers)
 
+    if parsed.rest_dir is not None:
+        swwae.restore(parsed.rest_dir)
+
     X_test, _ = dataset.get_batches(parsed.batch_size, train=False)
     test_steps = len(X_test)
 
