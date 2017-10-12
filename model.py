@@ -1,5 +1,5 @@
 import tensorflow as tf
-from tf_utils import max_unpool, variable_on_cpu, variable_with_weight_decay
+from tf_utils import max_unpool, variable_on_cpu, variable_with_weight_decay, max_pool_with_argmax
 
 class SWWAE:
     def __init__(self, sess, image_shape, mode, layers, fc_ae_layers=None, fc_layers=None, learning_rate=None, lambda_rec=None,
@@ -42,10 +42,7 @@ class SWWAE:
 
             # pooln
             if layer.pool_size is not None:
-                encoder_what, encoder_where = tf.nn.max_pool_with_argmax(encoder_what,
-                                                                        ksize=[1, layer.pool_size, layer.pool_size, 1],
-                                                                        strides=[1, layer.pool_size, layer.pool_size, 1],
-                                                                         padding='SAME')
+                encoder_what, encoder_where = max_pool_with_argmax(encoder_what, layer.pool_size, layer.pool_size)
                 encoder_wheres.append(encoder_where)
 
             else:
