@@ -45,7 +45,7 @@ for train_step in range(train_steps):
 
     if train_step == 0:
         embedding_matrix = representation
-        label_matrix = y_train[train_steps]
+        label_matrix = y_train[train_step]
     else:
         embedding_matrix = np.concatenate((embedding_matrix, representation))
         label_matrix = np.concatenate((label_matrix, y_train[train_step]))
