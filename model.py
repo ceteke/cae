@@ -3,7 +3,7 @@ from tf_utils import max_unpool, variable_on_cpu, variable_with_weight_decay
 
 class SWWAE:
     def __init__(self, sess, image_shape, mode, layers, fc_ae_layers=None, fc_layers=None, learning_rate=None, lambda_rec=None,
-                 lambda_M=None, dtype=tf.float32, tensorboard_id=None, num_classes=None, encoder_train=True):
+                 lambda_M=None, dtype=tf.float32, tensorboard_id=None, num_classes=None, encoder_train=True, batch_size=32):
         self.layers = layers
         self.dtype = dtype
         self.mode = mode
@@ -17,12 +17,13 @@ class SWWAE:
         self.num_classes = num_classes
         self.encoder_train = encoder_train
         self.fc_ae_layers = fc_ae_layers
+        self.batch_size = batch_size
 
         self.form_variables()
         self.form_graph()
 
     def form_variables(self):
-        self.input = tf.placeholder(shape=[None, self.image_shape[0], self.image_shape[1], self.image_shape[2]],
+        self.input = tf.placeholder(shape=[self.batch_size, self.image_shape[0], self.image_shape[1], self.image_shape[2]],
                                     dtype=self.dtype, name='input_batch')
         self.dropout_rate = tf.placeholder(shape=(), dtype=tf.float32)
         self.global_step = tf.Variable(0, trainable=False)
