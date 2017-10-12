@@ -33,7 +33,7 @@ swwae = SWWAE(sess,img_size,'embedding',layers,fc_layers)
 swwae.restore(os.path.join(parsed.out_dir))
 
 X_train, y_train = dataset.get_batches(parsed.batch_size,shuffle=False)
-X_test, _ = dataset.get_batches(parsed.batch_size,train=False)
+X_test, y_test = dataset.get_batches(parsed.batch_size,train=False)
 train_steps = len(X_train)
 test_steps = len(X_test)
 
@@ -45,8 +45,10 @@ for train_step in range(train_steps):
 
     if train_step == 0:
         embedding_matrix = representation
+        label_matrix = y_train[train_steps]
     else:
         embedding_matrix = np.concatenate((embedding_matrix, representation))
+        label_matrix = np.concatenate((label_matrix, y_train[train_step]))
 
 print(embedding_matrix.shape)
 
@@ -58,15 +60,17 @@ for test_step in range(test_steps):
 
     if test_step == 0:
         test_embedding_matrix = representation
+        test_label_matrix = y_test[test_step]
     else:
         test_embedding_matrix = np.concatenate((test_embedding_matrix, representation))
+        test_label_matrix = np.concatenate((test_label_matrix, y_test[test_step]))
 
 print(test_embedding_matrix.shape)
 
 clf = svm.LinearSVC()
-clf.fit(embedding_matrix, dataset.training_labels)
+clf.fit(embedding_matrix, label_matrix)
 y_pred = clf.predict(test_embedding_matrix)
 
-acc = metrics.accuracy_score(dataset.test_labels, y_pred)
+acc = metrics.accuracy_score(test_label_matrix, y_pred)
 
 print("Test acc:{}".format(acc))
