@@ -1,4 +1,4 @@
-from datapy.data.datasets import CIFAR10Dataset
+from datapy.data.datasets import CIFAR10Dataset, MNISTDataset
 from model import SWWAE
 import tensorflow as tf
 from utils import parse_layers
@@ -10,8 +10,14 @@ import os
 parser = get_emb_parser()
 parsed = parser.parse_args()
 
-dataset = CIFAR10Dataset()
-dataset.process()
+if parsed.dataset == 'cifar10':
+    dataset = CIFAR10Dataset()
+    dataset.process()
+    img_size = [32,32,3]
+else:
+    dataset = MNISTDataset()
+    dataset.process()
+    img_size = [28,28,1]
 
 if parsed.fc_layers is not None:
     fc_layers = [int(x) for x in parsed.fc_layers.split('-')]
@@ -22,7 +28,7 @@ layers = parse_layers(parsed.layer_str)
 
 sess = tf.Session()
 save_sess = tf.Session()
-swwae = SWWAE(sess,[32,32,3],'embedding',layers,fc_layers)
+swwae = SWWAE(sess,img_size,'embedding',layers,fc_layers)
 
 swwae.restore(os.path.join(parsed.out_dir))
 
@@ -65,7 +71,7 @@ embedding.tensor_name = embedding_tensor_variable.name
 embedding.metadata_path = os.path.join(parsed.save_path, 'metadata.tsv')
 
 embedding.sprite.image_path = sprite_path
-embedding.sprite.single_image_dim.extend([32, 32])
+embedding.sprite.single_image_dim.extend(img_size[0:2])
 
 summary_writer = tf.summary.FileWriter(parsed.save_path)
 projector.visualize_embeddings(summary_writer, config)

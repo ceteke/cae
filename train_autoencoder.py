@@ -1,10 +1,11 @@
-from datapy.data.datasets import CIFAR10Dataset
+from datapy.data.datasets import CIFAR10Dataset, MNISTDataset
 from model import SWWAE
 import tensorflow as tf
 from utils import parse_layers
 from arguments import get_parser
 from utils import save_loss, clear_loss
 import time
+from keras.preprocessing.image import ImageDataGenerator
 
 def main():
     clear_loss()
@@ -15,8 +16,16 @@ def main():
             (parsed.output_dir is not None and parsed.save_step is not None)), "Save step and output directory must be " \
                                                                                "null at the same time or not null at the same time"
 
-    dataset = CIFAR10Dataset()
-    dataset.process()
+    ds_type = parsed.dataset
+
+    if ds_type == 'cifar10':
+        dataset = CIFAR10Dataset()
+        dataset.process()
+        img_shape = [32,32,3]
+    else:
+        dataset = MNISTDataset()
+        dataset.process()
+        img_shape = [28,28,1]
 
     layers = parse_layers(parsed.layer_str)
     if parsed.fc_layers is not None:
@@ -25,30 +34,46 @@ def main():
         fc_layers = []
 
     sess = tf.Session()
-    swwae = SWWAE(sess,[32,32,3],'autoencode',layers,learning_rate=parsed.learning_rate,lambda_rec=parsed.lambda_rec,
+    swwae = SWWAE(sess,img_shape,'autoencode',layers,learning_rate=parsed.learning_rate,lambda_rec=parsed.lambda_rec,
                   lambda_M=parsed.lambda_M,dtype=tf.float32, tensorboard_id=parsed.tensorboard_id, encoder_train=True,
                   fc_ae_layers=fc_layers)
 
-    X, _ = dataset.get_batches(parsed.batch_size)
+    if parsed.rest_dir is not None:
+        swwae.restore(parsed.rest_dir)
+
     X_test, _ = dataset.get_batches(parsed.batch_size, train=False)
     test_steps = len(X_test)
 
-    print("Started training.\nTrain steps: {}".format(len(X)))
+    datagen = ImageDataGenerator(
+        featurewise_center=False,  # set input mean to 0 over the dataset
+        samplewise_center=False,  # set each sample mean to 0
+        featurewise_std_normalization=False,  # divide inputs by std of the dataset
+        samplewise_std_normalization=False,  # divide each input by its std
+        zca_whitening=False,  # apply ZCA whitening
+        rotation_range=0,  # randomly rotate images in the range (degrees, 0 to 180)
+        width_shift_range=0.1,  # randomly shift images horizontally (fraction of total width)
+        height_shift_range=0.1,  # randomly shift images vertically (fraction of total height)
+        horizontal_flip=True,  # randomly flip images
+        vertical_flip=False)  # randomly flip images
+
+    datagen.fit(dataset.training_data)
+
+    train_steps = int(len(dataset.training_data) / parsed.batch_size)
+
+    print("Started training.\nTrain steps: {}".format(train_steps))
 
     for e in range(parsed.num_epochs):
         total_loss = 0.0
         epoch_loss = 0.0
-        train_steps = len(X)
-        start = time.time()
-        for step in range(train_steps):
-            X_step = X[step]
-
-            loss, global_step = swwae.train(X_step)
+        batches = 0
+        for x_batch in datagen.flow(dataset.training_data, batch_size=parsed.batch_size):
+            loss, global_step = swwae.train(x_batch)
+            batches += 1
 
             total_loss += loss
             epoch_loss += loss
 
-            if (step + 1) % parsed.info_step == 0:
+            if (batches + 1) % parsed.info_step == 0:
                 avg_loss = total_loss / parsed.info_step
                 save_loss(avg_loss)
 
@@ -56,22 +81,20 @@ def main():
                     X_test_step = X_test[test_step]
                     swwae.eval(input=X_test_step)
 
-                print("Train epoch {}:\n\tstep {}\n\tavg. L2 Loss: {}".format(e + 1, step + 1, avg_loss),
-                      flush=True)
+                #print("Train epoch {}:\n\tstep {}\n\tavg. L2 Loss: {}".format(e + 1, step + 1, avg_loss),
+                 #     flush=True)
 
                 total_loss = 0.0
-                end = time.time()
-                hours, rem = divmod(end - start, 3600)
-                minutes, seconds = divmod(rem, 60)
-                print("Elapsed: {:0>2}:{:0>2}:{:0>2}".format(int(hours), int(minutes), int(seconds)), flush=True)
-                start = time.time()
 
             if parsed.save_step is not None:
                 if (global_step + 1) % parsed.save_step == 0:
                     swwae.save(path=parsed.output_dir)
 
+            if batches >= train_steps:
+                break
+
         print("Train epoch {}: avg. loss: {}".format(e + 1, epoch_loss / train_steps), flush=True)
-        X, _ = dataset.get_batches(parsed.batch_size)
+
 
     if parsed.output_dir is not None:
         swwae.save(path=parsed.output_dir)
