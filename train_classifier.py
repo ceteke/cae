@@ -67,7 +67,7 @@ for test_step in range(test_steps):
 
 print(test_embedding_matrix.shape)
 
-clf = svm.LinearSVC()
+clf = svm.SVC(kernel='poly')
 clf.fit(embedding_matrix, label_matrix)
 y_pred = clf.predict(test_embedding_matrix)
 
