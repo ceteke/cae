@@ -80,6 +80,7 @@ print(test_embedding_matrix.shape)
 print("RBF Sample")
 r_s = RBFSampler(gamma=.2, random_state=1, n_components=embedding_matrix.shape[1])
 embedding_matrix = r_s.fit_transform(embedding_matrix)
+test_embedding_matrix = r_s.transform(test_embedding_matrix)
 
 print("Training classifier")
 clf = svm.LinearSVC()
