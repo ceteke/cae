@@ -26,6 +26,8 @@ else:
     print("Unknown dataset")
     exit()
 
+dataset.sample_dataset()
+
 if parsed.fc_layers is not None:
     fc_layers = [int(x) for x in parsed.fc_layers.split('-')]
 else:
@@ -75,7 +77,7 @@ for test_step in range(test_steps):
 print(test_embedding_matrix.shape)
 
 print("Training classifier")
-clf = svm.LinearSVC()
+clf = svm.SVC()
 clf.fit(embedding_matrix, label_matrix)
 
 print("Predicting")

@@ -12,6 +12,7 @@ loss.txt
 cifar-10-python
 tensorboard
 # Distribution / packaging
+MNIST_data
 .Python
 env/
 build/
