@@ -1,4 +1,4 @@
-from datapy.data.datasets import CIFAR10Dataset, MNISTDataset, FashionDataset
+from datapy.data.datasets import CIFAR10Dataset, MNISTDataset, FashionDataset, STLDataset
 from model import SWWAE
 import tensorflow as tf
 from utils import parse_layers
@@ -30,6 +30,10 @@ def main():
         dataset = FashionDataset()
         dataset.process()
         img_shape = [28, 28, 1]
+    elif parsed.dataset == 'stl10':
+        dataset = STLDataset(is_ae=True)
+        dataset.process()
+        img_shape = [96, 96, 3]
     else:
         print("Unknown dataset")
         exit()

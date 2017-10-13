@@ -1,4 +1,4 @@
-from datapy.data.datasets import CIFAR10Dataset, MNISTDataset, FashionDataset
+from datapy.data.datasets import CIFAR10Dataset, MNISTDataset, FashionDataset, STLDataset
 from model import SWWAE
 import tensorflow as tf
 from utils import parse_layers
@@ -24,6 +24,10 @@ elif parsed.dataset == 'fashion':
     dataset = FashionDataset()
     dataset.process()
     img_size = [28, 28, 1]
+elif parsed.dataset == 'stl10':
+    dataset = STLDataset(is_ae=False)
+    dataset.process()
+    img_size = [96,96,3]
 else:
     print("Unknown dataset")
     exit()
@@ -76,11 +80,6 @@ for test_step in range(test_steps):
         test_label_matrix = np.concatenate((test_label_matrix, y_test[test_step]))
 
 print(test_embedding_matrix.shape)
-
-print("RBF Sample")
-r_s = RBFSampler(gamma=.2, random_state=1, n_components=embedding_matrix.shape[1])
-embedding_matrix = r_s.fit_transform(embedding_matrix)
-test_embedding_matrix = r_s.transform(test_embedding_matrix)
 
 print("Training classifier")
 clf = svm.LinearSVC()
