@@ -26,6 +26,7 @@ class SWWAE:
         self.input = tf.placeholder(shape=[self.batch_size, self.image_shape[0], self.image_shape[1], self.image_shape[2]],
                                     dtype=self.dtype, name='input_batch')
         self.dropout_rate = tf.placeholder(shape=(), dtype=tf.float32)
+        self.train_time = tf.placeholder(shape=(), dtype=tf.bool)
         self.global_step = tf.Variable(0, trainable=False)
         if self.mode == 'classification':
             self.labels = tf.placeholder(shape=[None,], dtype=tf.int64, name='labels')
@@ -39,6 +40,8 @@ class SWWAE:
             # convn
             with tf.variable_scope('conv{}'.format(i+1)):
                 encoder_what = tf.layers.conv2d(encoder_what, layer.channel_size, layer.filter_size, padding='same')
+                encoder_what = tf.layers.batch_normalization(encoder_what, training=self.train_time)
+                encoder_what = tf.nn.relu(encoder_what)
 
             # pooln
             if layer.pool_size is not None:
@@ -104,8 +107,9 @@ class SWWAE:
                 else:
                     shape = self.layers[i - 1].channel_size
                     print(decoder_what)
-                    decoder_what = tf.layers.conv2d_transpose(decoder_what, shape, layer.filter_size,
-                                               activation=tf.nn.relu, padding='same')
+                    decoder_what = tf.layers.conv2d_transpose(decoder_what, shape, layer.filter_size, padding='same')
+                    decoder_what = tf.layers.batch_normalization(decoder_what, training=self.train_time)
+                    decoder_what = tf.nn.relu(decoder_what)
 
                 decoder_whats.append(decoder_what)
 
@@ -203,7 +207,7 @@ class SWWAE:
     def train(self, input, labels=None):
         if self.mode == 'autoencode':
             _, batch_loss, global_step, tb_merge = self.sess.run([self.opt_op, self.ae_loss, self.global_step, self.merged],
-                                                       feed_dict={self.input: input, self.dropout_rate: 0.5})
+                                                       feed_dict={self.input: input, self.dropout_rate: 0.5, self.train_time:True})
             self.train_writer.add_summary(tb_merge, global_step)
             return batch_loss, global_step
         elif self.mode == 'classification':
@@ -215,7 +219,8 @@ class SWWAE:
 
     def eval(self, input, labels=None):
         if self.mode == 'autoencode':
-            loss, tb_merge, global_step = self.sess.run([self.ae_loss, self.merged, self.global_step], feed_dict={self.input:input, self.dropout_rate:0.0})
+            loss, tb_merge, global_step = self.sess.run([self.ae_loss, self.merged, self.global_step],
+                                                        feed_dict={self.input:input, self.dropout_rate:0.0, self.train_time:False})
             self.test_writer.add_summary(tb_merge, global_step)
             return loss
         elif self.mode == 'classification':
@@ -225,7 +230,7 @@ class SWWAE:
             return loss, accuracy
 
     def get_representation(self, input):
-        return self.sess.run(self.representation, feed_dict={self.input:input, self.dropout_rate:0.0})
+        return self.sess.run(self.representation, feed_dict={self.input:input, self.dropout_rate:0.0, self.train_time:False})
 
     def save(self, path, ow=True):
         saver = tf.train.Saver()
