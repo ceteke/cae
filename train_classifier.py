@@ -7,6 +7,7 @@ import os
 import numpy as np
 from sklearn import svm, metrics
 from sklearn.gaussian_process import GaussianProcessClassifier
+from sklearn.kernel_approximation import RBFSampler
 
 parser = get_emb_parser()
 parsed = parser.parse_args()
@@ -76,8 +77,12 @@ for test_step in range(test_steps):
 
 print(test_embedding_matrix.shape)
 
+print("RBF Sample")
+r_s = RBFSampler(gamma=.2, random_state=1)
+embedding_matrix = r_s.fit_transform(embedding_matrix)
+
 print("Training classifier")
-clf = GaussianProcessClassifier()
+clf = svm.LinearSVC()
 clf.fit(embedding_matrix, label_matrix)
 
 print("Predicting")
