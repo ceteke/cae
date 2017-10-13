@@ -1,4 +1,4 @@
-from datapy.data.datasets import CIFAR10Dataset, MNISTDataset
+from datapy.data.datasets import CIFAR10Dataset, MNISTDataset, FashionDataset
 from model import SWWAE
 import tensorflow as tf
 from utils import parse_layers
@@ -22,10 +22,17 @@ def main():
         dataset = CIFAR10Dataset()
         dataset.process()
         img_shape = [32,32,3]
-    else:
+    elif ds_type == 'mnist':
         dataset = MNISTDataset()
         dataset.process()
         img_shape = [28,28,1]
+    elif parsed.dataset == 'fashion':
+        dataset = FashionDataset()
+        dataset.process()
+        img_shape = [28, 28, 1]
+    else:
+        print("Unknown dataset")
+        exit()
 
     layers = parse_layers(parsed.layer_str)
     if parsed.fc_layers is not None:

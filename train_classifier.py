@@ -1,4 +1,4 @@
-from datapy.data.datasets import CIFAR10Dataset, MNISTDataset
+from datapy.data.datasets import CIFAR10Dataset, MNISTDataset, FashionDataset
 from model import SWWAE
 import tensorflow as tf
 from utils import parse_layers
@@ -14,10 +14,17 @@ if parsed.dataset == 'cifar10':
     dataset = CIFAR10Dataset()
     dataset.process()
     img_size = [32,32,3]
-else:
+elif parsed.dataset == 'mnist':
     dataset = MNISTDataset()
     dataset.process()
     img_size = [28,28,1]
+elif parsed.dataset == 'fashion':
+    dataset = FashionDataset()
+    dataset.process()
+    img_size = [28, 28, 1]
+else:
+    print("Unknown dataset")
+    exit()
 
 if parsed.fc_layers is not None:
     fc_layers = [int(x) for x in parsed.fc_layers.split('-')]
@@ -67,10 +74,12 @@ for test_step in range(test_steps):
 
 print(test_embedding_matrix.shape)
 
+print("Training classifier")
 clf = svm.LinearSVC()
 clf.fit(embedding_matrix, label_matrix)
-y_pred = clf.predict(test_embedding_matrix)
 
+print("Predicting")
+y_pred = clf.predict(test_embedding_matrix)
 acc = metrics.accuracy_score(test_label_matrix, y_pred)
 
 print("Test acc:{}".format(acc))
