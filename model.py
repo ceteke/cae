@@ -39,9 +39,8 @@ class SWWAE:
         for i, layer in enumerate(self.layers):
             # convn
             with tf.variable_scope('conv{}'.format(i+1)):
-                encoder_what = tf.layers.conv2d(encoder_what, layer.channel_size, layer.filter_size, padding='same')
-                encoder_what = tf.layers.batch_normalization(encoder_what, training=self.train_time)
-                encoder_what = tf.nn.relu(encoder_what)
+                encoder_what = tf.layers.conv2d(encoder_what, layer.channel_size, layer.filter_size, padding='same',
+                                                activation=tf.nn.relu)
 
             # pooln
             if layer.pool_size is not None:
@@ -107,9 +106,8 @@ class SWWAE:
                 else:
                     shape = self.layers[i - 1].channel_size
                     print(decoder_what)
-                    decoder_what = tf.layers.conv2d_transpose(decoder_what, shape, layer.filter_size, padding='same')
-                    decoder_what = tf.layers.batch_normalization(decoder_what, training=self.train_time)
-                    decoder_what = tf.nn.relu(decoder_what)
+                    decoder_what = tf.layers.conv2d_transpose(decoder_what, shape, layer.filter_size, padding='same',
+                                                              activation=tf.nn.relu)
 
                 decoder_whats.append(decoder_what)
 
