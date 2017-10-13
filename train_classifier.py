@@ -6,6 +6,7 @@ from arguments import get_emb_parser
 import os
 import numpy as np
 from sklearn import svm, metrics
+from sklearn.gaussian_process import GaussianProcessClassifier
 
 parser = get_emb_parser()
 parsed = parser.parse_args()
@@ -26,7 +27,6 @@ else:
     print("Unknown dataset")
     exit()
 
-dataset.sample_dataset()
 
 if parsed.fc_layers is not None:
     fc_layers = [int(x) for x in parsed.fc_layers.split('-')]
@@ -77,7 +77,7 @@ for test_step in range(test_steps):
 print(test_embedding_matrix.shape)
 
 print("Training classifier")
-clf = svm.SVC()
+clf = GaussianProcessClassifier()
 clf.fit(embedding_matrix, label_matrix)
 
 print("Predicting")
