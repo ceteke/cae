@@ -43,13 +43,7 @@ class SWWAE:
             in_channels = encoder_what.get_shape()[-1].value
             # convn
             with tf.variable_scope('conv{}'.format(i+1)) as scope:
-                kernel = tf.get_variable('kernel', shape=[layer.filter_size, layer.filter_size, in_channels, layer.channel_size],
-                                         initializer=self.initializer)
-                bias = tf.get_variable('bias', shape=[layer.channel_size], initializer=tf.constant_initializer(0.0))
-
-                conv = tf.nn.conv2d(encoder_what, kernel, [1,1,1,1], padding='SAME')
-                conv = tf.nn.bias_add(conv, bias)
-                encoder_what = tf.nn.relu(conv, name=scope.name)
+                encoder_what = tf.layers.conv2d(encoder_what, layer.channel_size, layer.filter_size, padding='same')
 
             # pooln
             if layer.pool_size is not None:
@@ -69,8 +63,7 @@ class SWWAE:
         flatten = tf.reshape(encoder_whats[-1], [-1, (pool_shape[1] * pool_shape[2] * pool_shape[3]).value])
 
         if len(self.fc_ae_layers) == 0:
-            representation = tf.identity(flatten, name='representation')
-            print(representation)
+            representation = tf.identity(flatten)
         else:
             encoder_fcs = []
             for i, layer in enumerate(self.fc_ae_layers):
@@ -80,7 +73,7 @@ class SWWAE:
                     else:
                         encoder_fc = tf.layers.dense(encoder_fc,self.fc_ae_layers[i], activation=tf.nn.relu)
                     encoder_fcs.append(encoder_fc)
-            representation = tf.identity(encoder_fc, name='representation')
+            representation = tf.identity(encoder_fc)
 
         # DECODER REVERSE FULLY CONNECTED
 
@@ -137,12 +130,13 @@ class SWWAE:
         return decoder_what, representation
 
     def get_tower_loss(self, scope):
-        decoder_what, _ = self.inference(self.input)
+        decoder_what, representation = self.inference(self.input)
         reconstruction_loss = tf.multiply(self.lambda_rec, tf.nn.l2_loss(tf.subtract(self.input, decoder_what)),
                                           name='rec_loss')
         tf.add_to_collection('losses', reconstruction_loss)
 
         losses = tf.get_collection('losses', scope)
+
         total_loss = tf.add_n(losses, name='total_loss')
 
         loss_averages = tf.train.ExponentialMovingAverage(0.9, name='avg')
@@ -155,7 +149,7 @@ class SWWAE:
 
         with tf.control_dependencies([loss_averages_op]):
             total_loss = tf.identity(total_loss)
-        return total_loss
+        return total_loss, representation
 
     def average_gradients(self, tower_grads):
         average_grads = []
@@ -175,19 +169,20 @@ class SWWAE:
         opt = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
         tower_grads = []
         tower_losses = []
-        for i in range(self.num_gpu):
-            with tf.device('/gpu:{}'.format(i)):
-                with tf.name_scope('tower_{}'.format(i)) as scope:
-                    loss = self.get_tower_loss(scope)
-                    tf.get_variable_scope().reuse_variables()
-                    grads = opt.compute_gradients(loss)
-                    tower_grads.append(grads)
-                    tower_losses.append(loss)
+        with tf.variable_scope(tf.get_variable_scope()) as big_scope:
+            for i in range(self.num_gpu):
+                with tf.device('/gpu:{}'.format(i)):
+                    with tf.name_scope('tower_{}'.format(i)) as scope:
+                        loss, representation = self.get_tower_loss(scope)
+                        tf.get_variable_scope().reuse_variables()
+                        grads = opt.compute_gradients(loss, var_list=tf.trainable_variables())
+                        tower_grads.append(grads)
+                        tower_losses.append(loss)
 
         grads = self.average_gradients(tower_grads)
+        self.representation = representation
         self.opt_op = opt.apply_gradients(grads, global_step=self.global_step)
         self.ae_loss = tf.reduce_mean(tower_losses)
-        self.representation = tf.get_variable('representation')
 
         for grad, var in grads:
             if grad is not None:
