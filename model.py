@@ -95,8 +95,7 @@ class SWWAE:
                                                   tf.nn.l2_loss(tf.subtract(decoder_what, encoder_fcs[i - 1])), name='fc_middle')
                         tf.add_to_collection('losses', fc_middle_loss)
 
-                pool_shape = encoder_whats[-1].get_shape()
-                decoder_what = tf.reshape(decoder_what, [-1, pool_shape[1].value, pool_shape[2].value, pool_shape[3].value])
+            decoder_what = tf.reshape(decoder_what, [-1, pool_shape[1].value, pool_shape[2].value, pool_shape[3].value])
 
         # END OF DECODER REVERSE FULLY CONNECTED
 
