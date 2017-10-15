@@ -18,6 +18,8 @@ def main():
 
     ds_type = parsed.dataset
 
+    log_h = parsed.loh_h == 1
+
     if ds_type == 'cifar10':
         dataset = CIFAR10Dataset()
         dataset.process()
@@ -47,7 +49,7 @@ def main():
     sess = tf.Session()
     swwae = SWWAE(sess,img_shape,'autoencode',layers,learning_rate=parsed.learning_rate,lambda_rec=parsed.lambda_rec,
                   lambda_M=parsed.lambda_M,dtype=tf.float32, tensorboard_id=parsed.tensorboard_id, encoder_train=True,
-                  fc_ae_layers=fc_layers, batch_size=parsed.batch_size)
+                  fc_ae_layers=fc_layers, batch_size=parsed.batch_size, log_h=log_h)
 
     if parsed.rest_dir is not None:
         swwae.restore(parsed.rest_dir)
@@ -78,6 +80,7 @@ def main():
         total_loss = 0.0
         epoch_loss = 0.0
         batches = 0
+        start_time = time.time()
         for x_batch in datagen.flow(dataset.training_data, batch_size=parsed.batch_size):
             loss, global_step = swwae.train(x_batch)
             batches += 1
@@ -93,9 +96,6 @@ def main():
                     X_test_step = X_test[test_step]
                     swwae.eval(input=X_test_step)
 
-                #print("Train epoch {}:\n\tstep {}\n\tavg. L2 Loss: {}".format(e + 1, step + 1, avg_loss),
-                 #     flush=True)
-
                 total_loss = 0.0
 
             if parsed.save_step is not None:
@@ -104,9 +104,8 @@ def main():
 
             if batches >= train_steps:
                 break
-
-        print("Train epoch {}: avg. loss: {}".format(e + 1, epoch_loss / train_steps), flush=True)
-
+        elapsed_time = time.time() - start_time
+        print("Train epoch {}: avg. loss: {}, elapsed {}".format(e + 1, epoch_loss / train_steps, elapsed_time), flush=True)
 
     if parsed.output_dir is not None:
         swwae.save(path=parsed.output_dir)

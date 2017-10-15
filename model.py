@@ -5,7 +5,7 @@ import re
 class SWWAE:
     def __init__(self, sess, image_shape, mode, layers, fc_ae_layers=None, fc_layers=None, learning_rate=None, lambda_rec=None,
                  lambda_M=None, dtype=tf.float32, tensorboard_id=None, num_classes=None, encoder_train=True, batch_size=32,
-                 num_gpu=1):
+                 num_gpu=1, log_h=True):
         self.layers = layers
         self.dtype = dtype
         self.mode = mode
@@ -21,6 +21,7 @@ class SWWAE:
         self.fc_ae_layers = fc_ae_layers
         self.batch_size = batch_size
         self.num_gpu = num_gpu
+        self.log_h = log_h
         self.initializer = tf.truncated_normal_initializer(stddev=1e-3, mean=0.0, dtype=tf.float32)
 
         self.form_variables()
@@ -51,7 +52,8 @@ class SWWAE:
             with tf.variable_scope('conv{}'.format(i+1)) as scope:
                 encoder_what = tf.layers.conv2d(encoder_what, layer.channel_size, layer.filter_size, padding='same',
                                                 activation=tf.nn.relu)
-                self._activation_summary(encoder_what)
+                if self.log_h:
+                    self._activation_summary(encoder_what)
 
             # pooln
             if layer.pool_size is not None:
@@ -80,7 +82,8 @@ class SWWAE:
                         encoder_fc = tf.layers.dense(flatten,self.fc_ae_layers[i], activation=tf.nn.relu)
                     else:
                         encoder_fc = tf.layers.dense(encoder_fc,self.fc_ae_layers[i], activation=tf.nn.relu)
-                    self._activation_summary(encoder_fc)
+                    if self.log_h:
+                        self._activation_summary(encoder_fc)
                     encoder_fcs.append(encoder_fc)
             representation = tf.identity(encoder_fc)
 
@@ -103,7 +106,8 @@ class SWWAE:
                         fc_middle_loss = tf.multiply(self.lambda_M,
                                                   tf.nn.l2_loss(tf.subtract(decoder_what, encoder_fcs[i - 1])), name='fc_middle')
                         tf.add_to_collection('losses', fc_middle_loss)
-                    self._activation_summary(decoder_what)
+                    if self.log_h:
+                        self._activation_summary(decoder_what)
             decoder_what = tf.reshape(decoder_what, [-1, pool_shape[1].value, pool_shape[2].value, pool_shape[3].value])
 
         # END OF DECODER REVERSE FULLY CONNECTED
@@ -126,7 +130,8 @@ class SWWAE:
                     shape = self.layers[i - 1].channel_size
                     decoder_what = tf.layers.conv2d_transpose(decoder_what, shape, layer.filter_size, padding='same',
                                                               activation=tf.nn.relu)
-                    self._activation_summary(decoder_what)
+                    if self.log_h:
+                        self._activation_summary(decoder_what)
 
                 decoder_whats.append(decoder_what)
 
@@ -195,14 +200,17 @@ class SWWAE:
         self.opt_op = opt.apply_gradients(grads, global_step=self.global_step)
         self.ae_loss = tf.reduce_mean(tower_losses)
 
-        for grad, var in grads:
-            if grad is not None:
-                tf.summary.histogram(var.op.name + '/gradients', grad)
+        if self.log_h:
+            for grad, var in grads:
+                if grad is not None:
+                    tf.summary.histogram(var.op.name + '/gradients', grad)
 
-        for var in tf.trainable_variables():
-            tf.summary.histogram(var.op.name, var)
+        if self.log_h:
+            for var in tf.trainable_variables():
+                tf.summary.histogram(var.op.name, var)
 
-        self.merged = tf.summary.merge_all()
+        self.merged_train = tf.summary.merge_all()
+        self.merged_test = tf.summary.merge()
         self.train_writer = tf.summary.FileWriter('tensorboard/{}/train'.format(self.tensorboard_id), self.sess.graph)
         self.test_writer = tf.summary.FileWriter('tensorboard/{}/test'.format(self.tensorboard_id), self.sess.graph)
         self.sess.run(tf.global_variables_initializer())
