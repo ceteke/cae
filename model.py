@@ -26,6 +26,11 @@ class SWWAE:
         self.form_variables()
         self.form_graph()
 
+    def _activation_summary(self, x):
+        tensor_name = re.sub('%s_[0-9]*/' % 'tower', '', x.op.name)
+        tf.summary.histogram(tensor_name + '/activations', x)
+        tf.summary.histogram(tensor_name + '/sparsity', tf.nn.zero_fraction(x))
+
     def form_variables(self):
         self.input = tf.placeholder(shape=[self.batch_size, self.image_shape[0], self.image_shape[1], self.image_shape[2]],
                                     dtype=self.dtype, name='input_batch')
@@ -43,7 +48,9 @@ class SWWAE:
             in_channels = encoder_what.get_shape()[-1].value
             # convn
             with tf.variable_scope('conv{}'.format(i+1)) as scope:
-                encoder_what = tf.layers.conv2d(encoder_what, layer.channel_size, layer.filter_size, padding='same')
+                encoder_what = tf.layers.conv2d(encoder_what, layer.channel_size, layer.filter_size, padding='same',
+                                                activation=tf.nn.relu)
+                self._activation_summary(encoder_what)
 
             # pooln
             if layer.pool_size is not None:
@@ -72,6 +79,7 @@ class SWWAE:
                         encoder_fc = tf.layers.dense(flatten,self.fc_ae_layers[i], activation=tf.nn.relu)
                     else:
                         encoder_fc = tf.layers.dense(encoder_fc,self.fc_ae_layers[i], activation=tf.nn.relu)
+                    self._activation_summary(encoder_fc)
                     encoder_fcs.append(encoder_fc)
             representation = tf.identity(encoder_fc)
 
@@ -94,7 +102,7 @@ class SWWAE:
                         fc_middle_loss = tf.multiply(self.lambda_M,
                                                   tf.nn.l2_loss(tf.subtract(decoder_what, encoder_fcs[i - 1])), name='fc_middle')
                         tf.add_to_collection('losses', fc_middle_loss)
-
+                    self._activation_summary(decoder_what)
             decoder_what = tf.reshape(decoder_what, [-1, pool_shape[1].value, pool_shape[2].value, pool_shape[3].value])
 
         # END OF DECODER REVERSE FULLY CONNECTED
@@ -117,13 +125,14 @@ class SWWAE:
                     shape = self.layers[i - 1].channel_size
                     decoder_what = tf.layers.conv2d_transpose(decoder_what, shape, layer.filter_size, padding='same',
                                                               activation=tf.nn.relu)
+                    self._activation_summary(decoder_what)
 
                 decoder_whats.append(decoder_what)
 
-            if i != 0:
-                middle_loss = tf.multiply(self.lambda_M,
-                                          tf.nn.l2_loss(tf.subtract(decoder_what, encoder_whats[i - 1])), name='deconv_middle')
-                tf.add_to_collection('losses', middle_loss)
+                if i != 0:
+                    middle_loss = tf.multiply(self.lambda_M,
+                                              tf.nn.l2_loss(tf.subtract(decoder_what, encoder_whats[i - 1])), name='deconv_middle')
+                    tf.add_to_collection('losses', middle_loss)
 
         # END OF THE MODEL
 
@@ -143,7 +152,7 @@ class SWWAE:
         loss_averages_op = loss_averages.apply(losses + [total_loss])
 
         for l in losses + [total_loss]:
-            loss_name = l.op.name
+            loss_name = re.sub('%s_[0-9]*/' % 'tower', '', l.op.name)
             tf.summary.scalar(loss_name + ' (raw)', l)
             tf.summary.scalar(loss_name, loss_averages.average(l))
 
@@ -197,14 +206,14 @@ class SWWAE:
         self.sess.run(tf.global_variables_initializer())
         self.sess.run(tf.local_variables_initializer())
 
-    def train(self, input, labels=None):
+    def train(self, input):
         if self.mode == 'autoencode':
             _, batch_loss, global_step, tb_merge = self.sess.run([self.opt_op, self.ae_loss, self.global_step, self.merged],
                                                        feed_dict={self.input: input, self.dropout_rate: 0.5, self.train_time:True})
             self.train_writer.add_summary(tb_merge, global_step)
             return batch_loss, global_step
 
-    def eval(self, input, labels=None):
+    def eval(self, input):
         if self.mode == 'autoencode':
             loss, tb_merge, global_step = self.sess.run([self.ae_loss, self.merged, self.global_step],
                                                         feed_dict={self.input:input, self.dropout_rate:0.0, self.train_time:False})
