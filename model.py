@@ -66,7 +66,8 @@ class SWWAE:
         else:
             with tf.name_scope('encoder_fc'):
                 encoder_fc = tf.layers.dense(self.flatten,self.rep_size, activation=tf.nn.relu)
-                #TODO Enforece sparsity here
+                tf.summary.histogram(encoder_fc, 'fully_connected_out')
+
                 p_hat = tf.reduce_mean(encoder_fc, axis=0) # Mean over the batch
                 p = tf.get_variable(name='p', shape=(self.rep_size), dtype=tf.float32, initializer=tf.constant_initializer(self.sparsity),
                                     trainable=False)
@@ -74,7 +75,7 @@ class SWWAE:
                                       trainable=False)
                 kl_divergence = tf.multiply(p, (tf.log(p) - tf.log(p_hat))) + tf.multiply(tf.subtract(one, p),
                                                                                           (tf.log(tf.subtract(one, p)) - tf.log(tf.subtract(one, p_hat))))
-                kl_divergence = self.beta * tf.reduce_sum(kl_divergence)
+                kl_divergence = tf.multiply(self.beta, tf.reduce_sum(kl_divergence), name='sparsity')
                 tf.add_to_collection('losses', kl_divergence)
 
             self.representation = encoder_fc
@@ -87,7 +88,7 @@ class SWWAE:
                 decoder_what = self.representation
 
                 decoder_what = tf.layers.dense(decoder_what,self.flatten.get_shape()[1].value)
-                fc_loss = tf.nn.l2_loss(tf.subtract(decoder_what, self.flatten))
+                fc_loss = tf.multiply(self.lambda_M, tf.nn.l2_loss(tf.subtract(decoder_what, self.flatten)), name='dense')
                 tf.add_to_collection('losses', fc_loss)
 
                 pool_shape = self.encoder_whats[-1].get_shape()
@@ -113,7 +114,7 @@ class SWWAE:
                 decoder_whats.append(decoder_what)
 
             if i != 0:
-                middle_loss = tf.multiply(self.lambda_M, tf.nn.l2_loss(tf.subtract(decoder_what, self.encoder_whats[i-1])))
+                middle_loss = tf.multiply(self.lambda_M, tf.nn.l2_loss(tf.subtract(decoder_what, self.encoder_whats[i-1])), name='middle')
                 tf.add_to_collection('losses', middle_loss)
 
         self.decoder_what = decoder_what
@@ -165,9 +166,8 @@ class SWWAE:
         loss_averages_op = loss_averages.apply(losses + [total_loss])
 
         for l in losses + [total_loss]:
-            loss_name = re.sub('%s_[0-9]*/' % 'tower', '', l.op.name)
-            tf.summary.scalar(loss_name + ' (raw)', l)
-            tf.summary.scalar(loss_name, loss_averages.average(l))
+            loss_name = re.sub(l.op.name)
+            tf.summary.scalar(loss_name, l)
 
         with tf.control_dependencies([loss_averages_op]):
             total_loss = tf.identity(total_loss)
