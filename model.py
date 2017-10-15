@@ -27,9 +27,10 @@ class SWWAE:
         self.form_graph()
 
     def _activation_summary(self, x):
-        tensor_name = re.sub('%s_[0-9]*/' % 'tower', '', x.op.name)
-        tf.summary.histogram(tensor_name + '/activations', x)
-        tf.summary.histogram(tensor_name + '/sparsity', tf.nn.zero_fraction(x))
+        with tf.device('/cpu:0'):
+            tensor_name = re.sub('%s_[0-9]*/' % 'tower', '', x.op.name)
+            tf.summary.histogram(tensor_name + '/activations', x)
+            tf.summary.histogram(tensor_name + '/sparsity', tf.nn.zero_fraction(x))
 
     def form_variables(self):
         self.input = tf.placeholder(shape=[self.batch_size, self.image_shape[0], self.image_shape[1], self.image_shape[2]],
@@ -153,8 +154,9 @@ class SWWAE:
 
         for l in losses + [total_loss]:
             loss_name = re.sub('%s_[0-9]*/' % 'tower', '', l.op.name)
-            tf.summary.scalar(loss_name + ' (raw)', l)
-            # tf.summary.scalar(loss_name, loss_averages.average(l))
+            with tf.device('/cpu:0'):
+                tf.summary.scalar(loss_name + ' (raw)', l)
+                tf.summary.scalar(loss_name, loss_averages.average(l))
 
         with tf.control_dependencies([loss_averages_op]):
             total_loss = tf.identity(total_loss)
