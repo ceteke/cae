@@ -40,13 +40,13 @@ class SWWAE:
         # ENCODER CONVOLUTIONS
         for i, layer in enumerate(self.layers):
             # convn
-            with tf.variable_scope('conv{}'.format(i+1)):
+            with tf.variable_scope('conv{}'.format(i+1)) as scope:
                 encoder_what = tf.layers.conv2d(encoder_what, layer.channel_size, layer.filter_size, padding='same',
-                                                activation=tf.nn.relu)
+                                                activation=tf.nn.relu, name=scope)
 
             # pooln
             if layer.pool_size is not None:
-                with tf.variable_scope('pool{}'.format(i+1)):
+                with tf.variable_scope('pool{}'.format(i+1)) as scope:
                     encoder_what, encoder_where = max_pool_with_argmax(encoder_what, layer.pool_size, layer.pool_size)
                 encoder_wheres.append(encoder_where)
 
