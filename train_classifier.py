@@ -62,8 +62,6 @@ for train_step in range(train_steps):
         label_matrix = np.concatenate((label_matrix, y_train[train_step]))
 
 print(embedding_matrix.shape)
-embedding_matrix[embedding_matrix >= 0.05] = 1.0
-embedding_matrix[embedding_matrix < 0.05] = 0.0
 
 print("Forming test embedding matrix")
 
