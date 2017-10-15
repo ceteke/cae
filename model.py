@@ -154,7 +154,7 @@ class SWWAE:
         for l in losses + [total_loss]:
             loss_name = re.sub('%s_[0-9]*/' % 'tower', '', l.op.name)
             tf.summary.scalar(loss_name + ' (raw)', l)
-            tf.summary.scalar(loss_name, loss_averages.average(l))
+            # tf.summary.scalar(loss_name, loss_averages.average(l))
 
         with tf.control_dependencies([loss_averages_op]):
             total_loss = tf.identity(total_loss)
