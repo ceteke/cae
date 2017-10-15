@@ -66,7 +66,7 @@ class SWWAE:
         else:
             with tf.name_scope('encoder_fc'):
                 encoder_fc = tf.layers.dense(self.flatten,self.rep_size, activation=tf.nn.relu)
-                tf.summary.histogram(encoder_fc, 'fully_connected_out')
+                tf.summary.histogram('representation', encoder_fc)
 
                 p_hat = tf.reduce_mean(encoder_fc, axis=0) # Mean over the batch
                 p = tf.get_variable(name='p', shape=(self.rep_size), dtype=tf.float32, initializer=tf.constant_initializer(self.sparsity),
