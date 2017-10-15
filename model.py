@@ -73,7 +73,7 @@ class SWWAE:
                                     trainable=False)
                 one = tf.get_variable(name='1', shape=(self.rep_size), dtype=tf.float32, initializer=tf.constant_initializer(1.0),
                                       trainable=False)
-                kl_divergence = tf.multiply(p, (tf.log(p) - tf.log(p_hat))) + tf.multiply(tf.subtract(one, p),
+                kl_divergence = tf.multiply(p, (tf.log(p) - tf.log(p_hat + 0.001))) + tf.multiply(tf.subtract(one, p),
                                                                                           (tf.log(tf.subtract(one, p)) - tf.log(tf.subtract(one, p_hat))))
                 kl_divergence = tf.multiply(self.beta, tf.reduce_sum(kl_divergence), name='sparsity')
                 tf.add_to_collection('losses', kl_divergence)
