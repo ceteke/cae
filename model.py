@@ -166,7 +166,7 @@ class SWWAE:
         loss_averages_op = loss_averages.apply(losses + [total_loss])
 
         for l in losses + [total_loss]:
-            loss_name = re.sub(l.op.name)
+            loss_name = l.op.name
             tf.summary.scalar(loss_name, l)
 
         with tf.control_dependencies([loss_averages_op]):
