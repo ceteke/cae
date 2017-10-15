@@ -210,7 +210,6 @@ class SWWAE:
                 tf.summary.histogram(var.op.name, var)
 
         self.merged_train = tf.summary.merge_all()
-        self.merged_test = tf.summary.merge()
         self.train_writer = tf.summary.FileWriter('tensorboard/{}/train'.format(self.tensorboard_id), self.sess.graph)
         self.test_writer = tf.summary.FileWriter('tensorboard/{}/test'.format(self.tensorboard_id), self.sess.graph)
         self.sess.run(tf.global_variables_initializer())
