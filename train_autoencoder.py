@@ -18,7 +18,7 @@ def main():
 
     ds_type = parsed.dataset
 
-    log_h = parsed.loh_h == 1
+    log_h = parsed.log_h == 1
 
     if ds_type == 'cifar10':
         dataset = CIFAR10Dataset()
