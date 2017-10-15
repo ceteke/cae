@@ -17,7 +17,6 @@ def variable_with_weight_decay(name, shape, stddev, wd, dtype, trainable):
 
 
 def max_pool_with_argmax(net, pool_size, stride):
-  with tf.name_scope('MaxPoolArgMax'):
     _, mask = tf.nn.max_pool_with_argmax(
       net,
       ksize=[1, stride, stride, 1],
@@ -29,8 +28,6 @@ def max_pool_with_argmax(net, pool_size, stride):
 
 # Thank you, @https://github.com/Pepslee
 def max_unpool(net, mask, stride):
-  assert mask is not None
-  with tf.name_scope('UnPool2D'):
     ksize = [1, stride, stride, 1]
     input_shape = net.get_shape().as_list()
     #  calculation new shape

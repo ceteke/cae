@@ -4,6 +4,7 @@ def get_parser():
     parser = argparse.ArgumentParser(description='SWWAE Implementation')
 
     parser.add_argument("-e", "--epochs", help="Number of epochs", required=True, dest='num_epochs', type=int)
+    parser.add_argument("-ng", "--num_gpu", help="Number of GPUs", required=True, dest='num_gpu', type=int)
     parser.add_argument("-i", "--info", help="Info steps", required=True, dest='info_step', type=int)
     parser.add_argument("-b", "--batch", help="Batch size", required=True, dest='batch_size', type=int)
     parser.add_argument("-l", "--layers", help="Layer string. See README.md", required=False, dest='layer_str', type=str,
