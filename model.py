@@ -1,5 +1,6 @@
 import tensorflow as tf
 from tf_utils import max_unpool, variable_on_cpu, variable_with_weight_decay, max_pool_with_argmax
+import re
 
 class SWWAE:
     def __init__(self, sess, image_shape, mode, layers, fc_ae_layers=None, fc_layers=None, learning_rate=None, lambda_rec=None,
@@ -156,9 +157,22 @@ class SWWAE:
     def ae_loss(self):
         reconstruction_loss = tf.multiply(self.lambda_rec, tf.nn.l2_loss(tf.subtract(self.input, self.decoder_what)))
         tf.add_to_collection('losses', reconstruction_loss)
-        ae_loss = tf.add_n(tf.get_collection('losses'), name='total_loss')
-        tf.summary.scalar('loss', ae_loss)
-        return ae_loss
+        losses = tf.get_collection('losses')
+
+        total_loss = tf.add_n(losses, name='total_loss')
+
+        loss_averages = tf.train.ExponentialMovingAverage(0.9, name='avg')
+        loss_averages_op = loss_averages.apply(losses + [total_loss])
+
+        for l in losses + [total_loss]:
+            loss_name = re.sub('%s_[0-9]*/' % 'tower', '', l.op.name)
+            tf.summary.scalar(loss_name + ' (raw)', l)
+            tf.summary.scalar(loss_name, loss_averages.average(l))
+
+        with tf.control_dependencies([loss_averages_op]):
+            total_loss = tf.identity(total_loss)
+
+        return total_loss
 
     def softmax_loss(self, fc_out):
         labels = tf.cast(self.labels, tf.int64)
