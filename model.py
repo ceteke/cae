@@ -3,8 +3,9 @@ from tf_utils import max_unpool, variable_on_cpu, variable_with_weight_decay, ma
 import re
 
 class SWWAE:
-    def __init__(self, sess, image_shape, mode, layers, fc_ae_layers=None, fc_layers=None, learning_rate=None, lambda_rec=None,
-                 lambda_M=None, dtype=tf.float32, tensorboard_id=None, num_classes=None, encoder_train=True, batch_size=32):
+    def __init__(self, sess, image_shape, mode, layers, rep_size=None, fc_layers=None, learning_rate=None, lambda_rec=None,
+                 lambda_M=None, dtype=tf.float32, tensorboard_id=None, num_classes=None, encoder_train=True, batch_size=32,
+                 sparsity=0.05, beta=0.5):
         self.layers = layers
         self.dtype = dtype
         self.mode = mode
@@ -17,8 +18,10 @@ class SWWAE:
         self.fc_layers = fc_layers
         self.num_classes = num_classes
         self.encoder_train = encoder_train
-        self.fc_ae_layers = fc_ae_layers
+        self.rep_size = rep_size
         self.batch_size = batch_size
+        self.sparsity = sparsity
+        self.beta = beta
 
         self.form_variables()
         self.form_graph()
@@ -26,7 +29,7 @@ class SWWAE:
     def form_variables(self):
         self.input = tf.placeholder(shape=[self.batch_size, self.image_shape[0], self.image_shape[1], self.image_shape[2]],
                                     dtype=self.dtype, name='input_batch')
-        self.dropout_rate = tf.placeholder(shape=(), dtype=tf.float32)
+
         self.train_time = tf.placeholder(shape=(), dtype=tf.bool)
         self.global_step = tf.Variable(0, trainable=False)
         if self.mode == 'classification':
@@ -58,37 +61,34 @@ class SWWAE:
         self.flatten = tf.reshape(encoder_whats[-1], [-1, (pool_shape[1] * pool_shape[2] * pool_shape[3]).value])
         self.encoder_wheres = encoder_wheres
 
-        if len(self.fc_ae_layers) == 0:
+        if self.rep_size is None:
             self.representation = self.flatten
         else:
-            self.encoder_fcs = []
             with tf.name_scope('encoder_fc'):
-                for i, layer in enumerate(self.fc_ae_layers):
-                    if i == 0:
-                        encoder_fc = tf.layers.dense(self.flatten,self.fc_ae_layers[i], activation=tf.nn.relu)
-                    else:
-                        encoder_fc = tf.layers.dense(encoder_fc,self.fc_ae_layers[i], activation=tf.nn.relu)
-                    self.encoder_fcs.append(encoder_fc)
+                encoder_fc = tf.layers.dense(self.flatten,self.rep_size, activation=tf.nn.relu)
+                #TODO Enforece sparsity here
+                p_hat = tf.reduce_mean(encoder_fc, axis=0) # Mean over the batch
+                p = tf.get_variable(name='p', shape=(self.rep_size), dtype=tf.float32, initializer=tf.constant_initializer(self.sparsity),
+                                    trainable=False)
+                one = tf.get_variable(name='1', shape=(self.rep_size), dtype=tf.float32, initializer=tf.constant_initializer(1.0),
+                                      trainable=False)
+                kl_divergence = tf.multiply(p, (tf.log(p) - tf.log(p_hat))) + tf.multiply(tf.subtract(one, p),
+                                                                                          (tf.log(tf.subtract(one, p)) - tf.log(tf.subtract(one, p_hat))))
+                kl_divergence = self.beta * tf.reduce_sum(kl_divergence)
+                tf.add_to_collection('losses', kl_divergence)
+
             self.representation = encoder_fc
 
     def decoder_forward(self):
-        if len(self.fc_ae_layers) == 0:
+        if self.rep_size is None:
             decoder_what = self.encoder_whats[-1]
         else:
             with tf.name_scope('decoder_fc'):
-                decoder_what = tf.layers.dropout(self.representation,self.dropout_rate)
-                for i in range(len(self.fc_ae_layers)-1, -1, -1):
-                    if i == 0:
-                        decoder_what = tf.layers.dense(decoder_what,self.flatten.get_shape()[1].value,activation=tf.nn.relu)
-                        fc_middle_loss = tf.multiply(self.lambda_M,
-                                                     tf.nn.l2_loss(tf.subtract(decoder_what, self.flatten)))
-                        tf.add_to_collection('losses', fc_middle_loss)
-                    else:
-                        decoder_what = tf.layers.dense(decoder_what,self.fc_ae_layers[i-1],activation=tf.nn.relu)
+                decoder_what = self.representation
 
-                        fc_middle_loss = tf.multiply(self.lambda_M,
-                                                  tf.nn.l2_loss(tf.subtract(decoder_what, self.encoder_fcs[i - 1])))
-                        tf.add_to_collection('losses', fc_middle_loss)
+                decoder_what = tf.layers.dense(decoder_what,self.flatten.get_shape()[1].value)
+                fc_loss = tf.nn.l2_loss(tf.subtract(decoder_what, self.flatten))
+                tf.add_to_collection('losses', fc_loss)
 
                 pool_shape = self.encoder_whats[-1].get_shape()
                 decoder_what = tf.reshape(decoder_what, [-1, pool_shape[1].value, pool_shape[2].value, pool_shape[3].value])
@@ -219,30 +219,30 @@ class SWWAE:
     def train(self, input, labels=None):
         if self.mode == 'autoencode':
             _, batch_loss, global_step, tb_merge = self.sess.run([self.opt_op, self.ae_loss, self.global_step, self.merged],
-                                                       feed_dict={self.input: input, self.dropout_rate: 0.5, self.train_time:True})
+                                                       feed_dict={self.input: input})
             self.train_writer.add_summary(tb_merge, global_step)
             return batch_loss, global_step
         elif self.mode == 'classification':
             _, batch_loss, predictions, accuracy, global_step, tb_merge = self.sess.run([self.opt_op, self.s_loss, self.predictions, self.accuracy,
                                                                                         self.global_step, self.merged],
-                                                                                        feed_dict={self.input: input, self.labels:labels, self.dropout_rate:0.5})
+                                                                                        feed_dict={self.input: input, self.labels:labels})
             self.train_writer.add_summary(tb_merge, global_step)
             return batch_loss, accuracy, global_step
 
     def eval(self, input, labels=None):
         if self.mode == 'autoencode':
             loss, tb_merge, global_step = self.sess.run([self.ae_loss, self.merged, self.global_step],
-                                                        feed_dict={self.input:input, self.dropout_rate:0.0, self.train_time:False})
+                                                        feed_dict={self.input:input})
             self.test_writer.add_summary(tb_merge, global_step)
             return loss
         elif self.mode == 'classification':
             loss, accuracy, tb_merge, global_step = self.sess.run([self.s_loss, self.accuracy, self.merged, self.global_step],
-                                                                  feed_dict={self.input:input, self.labels:labels, self.dropout_rate:0.0})
+                                                                  feed_dict={self.input:input, self.labels:labels})
             self.test_writer.add_summary(tb_merge, global_step)
             return loss, accuracy
 
     def get_representation(self, input):
-        return self.sess.run(self.representation, feed_dict={self.input:input, self.dropout_rate:0.0, self.train_time:False})
+        return self.sess.run(self.representation, feed_dict={self.input:input})
 
     def save(self, path, ow=True):
         saver = tf.train.Saver()

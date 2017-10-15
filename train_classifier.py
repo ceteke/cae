@@ -33,16 +33,13 @@ else:
     exit()
 
 
-if parsed.fc_layers is not None:
-    fc_layers = [int(x) for x in parsed.fc_layers.split('-')]
-else:
-    fc_layers = []
+fc_size = parsed.fc_layers
 
 layers = parse_layers(parsed.layer_str)
 
 sess = tf.Session()
 save_sess = tf.Session()
-swwae = SWWAE(sess,img_size,'embedding',layers,fc_layers)
+swwae = SWWAE(sess,img_size,'embedding',layers,fc_size)
 
 swwae.restore(os.path.join(parsed.out_dir))
 
