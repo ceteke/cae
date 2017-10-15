@@ -157,7 +157,7 @@ class SWWAE:
             for g, _ in grad_and_vars:
                 expanded_g = tf.expand_dims(g, 0)
                 grads.append(expanded_g)
-            grad = tf.concat(0, grads)
+            grad = tf.concat(grads, 0)
             grad = tf.reduce_mean(grad, 0)
             v = grad_and_vars[0][1]
             grad_and_var = (grad, v)
