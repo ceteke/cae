@@ -21,6 +21,7 @@ class SWWAE:
         self.fc_ae_layers = fc_ae_layers
         self.batch_size = batch_size
         self.num_gpu = num_gpu
+        self.initializer = tf.truncated_normal_initializer(stddev=1e-3, mean=0.0, dtype=tf.float32)
 
         self.form_variables()
         self.form_graph()
@@ -39,10 +40,16 @@ class SWWAE:
 
         # ENCODER CONVOLUTIONS
         for i, layer in enumerate(self.layers):
+            in_channels = encoder_what.get_shape()[-1].value
             # convn
             with tf.variable_scope('conv{}'.format(i+1)) as scope:
-                encoder_what = tf.layers.conv2d(encoder_what, layer.channel_size, layer.filter_size, padding='same',
-                                                activation=tf.nn.relu, name=scope)
+                kernel = tf.get_variable('kernel', shape=[layer.filter_size, layer.filter_size, in_channels, layer.channel_size],
+                                         initializer=self.initializer)
+                bias = tf.get_variable('bias', shape=[layer.channel_size], initializer=tf.constant_initializer(0.0))
+
+                conv = tf.nn.conv2d(encoder_what, kernel, [1,1,1,1], padding='SAME')
+                conv = tf.nn.bias_add(conv, bias)
+                encoder_what = tf.nn.relu(conv, name=scope.name)
 
             # pooln
             if layer.pool_size is not None:
