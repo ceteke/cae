@@ -156,7 +156,7 @@ class SWWAE:
 
 
     def ae_loss(self):
-        reconstruction_loss = tf.multiply(self.lambda_rec, tf.reduce_mean(tf.square(tf.subtract(self.input, self.decoder_what))), name='reconstruction')
+        reconstruction_loss = tf.multiply(self.lambda_rec, tf.nn.l2_loss(tf.subtract(self.input, self.decoder_what)), name='reconstruction')
         tf.add_to_collection('losses', reconstruction_loss)
         losses = tf.get_collection('losses')
 
