@@ -32,24 +32,16 @@ def l2_regulazier(scale, collection_name):
         tf.add_to_collection(collection_name, scale * tf.nn.l2_loss(weights, weights.op.name))
     return l2
 
+def getwhere(y_prepool, y_postpool):
+    ''' Calculate the 'where' mask that contains switches indicating which
+    index contained the max value when MaxPool2D was applied.  Using the
+    gradient of the sum is a nice trick to keep everything high level.'''
+    return tf.gradients(tf.reduce_sum(y_postpool), y_prepool)[0]
+
 # Thank you, @https://github.com/Pepslee
-def max_unpool(net, corr_out, mask):
-  assert mask is not None
+def max_unpool(net, mask, pool_size):
   with tf.name_scope('UnPool2D'):
-    input_shape = net.get_shape().as_list()
-    output_shape = corr_out.get_shape().as_list()
-    output_shape[-1] = input_shape[-1]
-    # calculation indices for batch, height, width and feature maps
-    one_like_mask = tf.ones_like(mask)
-    batch_range = tf.reshape(tf.range(output_shape[0], dtype=tf.int64), shape=[input_shape[0], 1, 1, 1])
-    b = one_like_mask * batch_range
-    y = mask // (output_shape[2] * output_shape[3])
-    x = mask % (output_shape[2] * output_shape[3]) // output_shape[3]
-    feature_range = tf.range(output_shape[3], dtype=tf.int64)
-    f = one_like_mask * feature_range
-    # transpose indices & reshape update values to one dimension
-    updates_size = tf.size(net)
-    indices = tf.transpose(tf.reshape(tf.stack([b, y, x, f]), [4, updates_size]))
-    values = tf.reshape(net, [updates_size])
-    ret = tf.scatter_nd(indices, values, output_shape)
-    return ret
+      in_shape = net.get_shape().as_list()
+      out_shape = [in_shape[1]*pool_size, in_shape[2]*pool_size]
+      y = tf.image.resize_images(net, out_shape, method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+      return tf.multiply(y, mask)
