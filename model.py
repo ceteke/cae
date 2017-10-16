@@ -52,8 +52,9 @@ class SWWAE:
                                                 activation=tf.nn.relu, kernel_regularizer=self.regulazier,
                                                 bias_regularizer=self.regulazier,kernel_initializer=self.kernel_initializer,
                                                 bias_initializer=self.bias_initializer)
-                encoder_what = tf.layers.batch_normalization(encoder_what, training=self.train_time)
                 encoder_convs.append(encoder_what)
+
+                encoder_what = tf.layers.batch_normalization(encoder_what, training=self.train_time)
 
             # pooln
             if layer.pool_size is not None:
@@ -109,10 +110,9 @@ class SWWAE:
                                                bias_regularizer=self.regulazier,
                                                activation=tf.nn.relu)
 
-                decoder_what = tf.layers.batch_normalization(decoder_what, training=self.train_time)
                 fc_loss = tf.multiply(self.lambda_M, tf.nn.l2_loss(tf.subtract(decoder_what, self.flatten)), name='dense')
                 tf.add_to_collection('losses', fc_loss)
-
+                decoder_what = tf.layers.batch_normalization(decoder_what, training=self.train_time)
                 pool_shape = self.encoder_whats[-1].get_shape()
                 decoder_what = tf.reshape(decoder_what, [-1, pool_shape[1].value, pool_shape[2].value, pool_shape[3].value])
 
@@ -146,12 +146,12 @@ class SWWAE:
 
                 if i != 0:
                     decoder_what = tf.nn.relu(decoder_what)
-                    decoder_what = tf.layers.batch_normalization(decoder_what, training=self.train_time)
 
                 decoder_whats.append(decoder_what)
 
             if i != 0:
-                middle_loss = tf.multiply(self.lambda_M, tf.nn.l2_loss(tf.subtract(decoder_what, self.encoder_whats[i-1])), name='middle')
+                middle_loss = tf.multiply(self.lambda_M, tf.nn.l2_loss(tf.subtract(decoder_what, self.encoder_convs[i-1])), name='middle')
+                decoder_what = tf.layers.batch_normalization(decoder_what, training=self.train_time)
                 tf.add_to_collection('losses', middle_loss)
 
         self.decoder_what = decoder_what
