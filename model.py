@@ -43,7 +43,7 @@ class SWWAE:
         for i, layer in enumerate(self.layers):
             # convn
             with tf.variable_scope('conv{}'.format(i+1)):
-                encoder_what = tf.layers.conv2d(encoder_what, layer.channel_size, layer.filter_size, padding='same',
+                encoder_what = tf.layers.conv2d(encoder_what, layer.channel_size, layer.filter_size, padding='valid',
                                                 activation=tf.nn.relu)
 
             # pooln
@@ -104,11 +104,11 @@ class SWWAE:
             with tf.variable_scope('deconv{}'.format(i+1)):
                 if i == 0: # Does not use non-linearity at the last layer
                     shape = self.image_shape[-1]
-                    decoder_what = tf.layers.conv2d_transpose(decoder_what, shape, layer.filter_size, padding='same')
+                    decoder_what = tf.layers.conv2d_transpose(decoder_what, shape, layer.filter_size, padding='valid')
                 else:
                     shape = self.layers[i - 1].channel_size
                     print(decoder_what)
-                    decoder_what = tf.layers.conv2d_transpose(decoder_what, shape, layer.filter_size, padding='same',
+                    decoder_what = tf.layers.conv2d_transpose(decoder_what, shape, layer.filter_size, padding='valid',
                                                               activation=tf.nn.relu)
 
                 decoder_whats.append(decoder_what)
