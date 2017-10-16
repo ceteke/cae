@@ -42,7 +42,7 @@ class SWWAE:
     def encoder_forward(self):
         encoder_whats = []
         encoder_wheres = []
-        encoder_convs = []
+        encoder_convs = [] # THIS IS NOT FOR LOSS JUST FOR SHAPE INFORMATION
         encoder_what = self.input
 
         for i, layer in enumerate(self.layers):
@@ -52,7 +52,6 @@ class SWWAE:
                                                 activation=tf.nn.relu, kernel_regularizer=self.regulazier,
                                                 bias_regularizer=self.regulazier,kernel_initializer=self.kernel_initializer,
                                                 bias_initializer=self.bias_initializer)
-                encoder_what = tf.layers.batch_normalization(encoder_what, training=self.train_time)
                 encoder_convs.append(encoder_what)
 
             # pooln
@@ -62,7 +61,7 @@ class SWWAE:
 
             else:
                 encoder_wheres.append(None)
-
+            encoder_what = tf.layers.batch_normalization(encoder_what, training=self.train_time)
             encoder_whats.append(encoder_what)
 
         self.encoder_whats = encoder_whats
@@ -80,7 +79,6 @@ class SWWAE:
                                              bias_initializer=self.bias_initializer,
                                              kernel_regularizer=self.regulazier,
                                              bias_regularizer=self.regulazier)
-                encoder_fc = tf.layers.batch_normalization(encoder_fc, training=self.train_time)
                 tf.summary.histogram('representation', encoder_fc)
 
                 p_hat = tf.reduce_mean(encoder_fc, axis=0) # Mean over the batch
@@ -108,14 +106,12 @@ class SWWAE:
                                                kernel_regularizer=self.regulazier,
                                                bias_regularizer=self.regulazier,
                                                activation=tf.nn.relu)
-                decoder_what = tf.layers.batch_normalization(decoder_what, training=self.train_time)
                 fc_loss = tf.multiply(self.lambda_M, tf.nn.l2_loss(tf.subtract(decoder_what, self.flatten)), name='dense')
-                tf.add_to_collection('losses', fc_loss)
+                # tf.add_to_collection('losses', fc_loss)
 
                 pool_shape = self.encoder_whats[-1].get_shape()
                 decoder_what = tf.reshape(decoder_what, [-1, pool_shape[1].value, pool_shape[2].value, pool_shape[3].value])
 
-        decoder_whats = []
         for i in range(len(self.layers)-1, -1, -1):
             layer = self.layers[i]
             #unpooln
@@ -147,11 +143,10 @@ class SWWAE:
                     decoder_what = tf.nn.relu(decoder_what)
                     decoder_what = tf.layers.batch_normalization(decoder_what, training=self.train_time)
 
-                decoder_whats.append(decoder_what)
 
             if i != 0:
                 middle_loss = tf.multiply(self.lambda_M, tf.nn.l2_loss(tf.subtract(decoder_what, self.encoder_whats[i-1])), name='middle')
-                tf.add_to_collection('losses', middle_loss)
+                # tf.add_to_collection('losses', middle_loss)
 
         self.decoder_what = decoder_what
 
@@ -192,21 +187,15 @@ class SWWAE:
 
 
     def ae_loss(self):
-        reconstruction_loss = tf.multiply(self.lambda_rec, tf.nn.l2_loss(tf.subtract(self.input, self.decoder_what)), name='reconstruction')
+        reconstruction_loss = tf.losses.mean_squared_error(self.input, self.decoder_what)
         tf.add_to_collection('losses', reconstruction_loss)
         losses = tf.get_collection('losses')
 
         total_loss = tf.add_n(losses, name='total_loss')
 
-        loss_averages = tf.train.ExponentialMovingAverage(0.9, name='avg')
-        loss_averages_op = loss_averages.apply(losses + [total_loss])
-
         for l in losses + [total_loss]:
             loss_name = l.op.name
             tf.summary.scalar(loss_name, l)
-
-        with tf.control_dependencies([loss_averages_op]):
-            total_loss = tf.identity(total_loss)
 
         return total_loss
 
