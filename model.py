@@ -22,7 +22,7 @@ class SWWAE:
         self.batch_size = batch_size
         self.sparsity = sparsity
         self.beta = beta
-        self.regulazier = l2_regulazier(0.1, 'losses')
+        self.regulazier = l2_regulazier(0.5, 'losses')
         self.kernel_initializer = tf.truncated_normal_initializer(mean=0.0, stddev=1e-3)
         self.bias_initializer = tf.constant_initializer(0.0)
 
