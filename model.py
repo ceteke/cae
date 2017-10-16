@@ -88,9 +88,9 @@ class SWWAE:
                 kl_divergence = tf.multiply(p, (tf.log(p) - tf.log(p_hat + 0.0001))) + tf.multiply(tf.subtract(one, p),
                                                                                           (tf.log(tf.subtract(one, p)) - tf.log(tf.subtract(one, p_hat))))
                 kl_divergence = tf.multiply(self.beta, tf.reduce_sum(kl_divergence), name='sparsity')
-                # tf.add_to_collection('losses', kl_divergence)
+                tf.add_to_collection('losses', kl_divergence)
 
-            self.representation = encoder_fc
+            self.representation = tf.layers.batch_normalization(encoder_fc, training=self.train_time)
 
     def decoder_forward(self):
         if self.rep_size is None:
@@ -104,10 +104,7 @@ class SWWAE:
                                                bias_initializer=self.bias_initializer,
                                                kernel_regularizer=self.regulazier,
                                                activation=tf.nn.relu)
-
-                fc_loss = tf.multiply(self.lambda_M, tf.nn.l2_loss(tf.subtract(decoder_what, self.flatten)), name='dense')
-                # tf.add_to_collection('losses', fc_loss)
-
+                decoder_what = tf.layers.batch_normalization(decoder_what, training=self.train_time)
                 pool_shape = self.encoder_whats[-1].get_shape()
                 decoder_what = tf.reshape(decoder_what, [-1, pool_shape[1].value, pool_shape[2].value, pool_shape[3].value])
 
@@ -130,8 +127,7 @@ class SWWAE:
 
                 filter = tf.get_variable('filter', shape=filter_size, dtype=self.dtype,
                                          initializer=self.kernel_initializer, regularizer=self.regulazier)
-                bias = tf.get_variable('bias', shape=bias_size, dtype=self.dtype,
-                                       initializer=self.bias_initializer, regularizer=self.regulazier)
+                bias = tf.get_variable('bias', shape=bias_size, dtype=self.dtype, initializer=self.bias_initializer)
 
                 decoder_what = tf.nn.conv2d_transpose(decoder_what, filter, output_shape=output_shape,
                                                       strides=[1,1,1,1], padding='VALID')
@@ -141,11 +137,6 @@ class SWWAE:
                 if i != 0:
                     decoder_what = tf.nn.relu(decoder_what)
                     decoder_what = tf.layers.batch_normalization(decoder_what, training=self.train_time)
-
-
-            if i != 0:
-                middle_loss = tf.multiply(self.lambda_M, tf.nn.l2_loss(tf.subtract(decoder_what, self.encoder_whats[i-1])), name='middle')
-                # tf.add_to_collection('losses', middle_loss)
 
         self.decoder_what = decoder_what
 
