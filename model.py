@@ -63,7 +63,7 @@ class SWWAE:
                 encoder_wheres.append(None)
                 encoder_what = encoder_conv
 
-            encoder_what = tf.layers.batch_normalization(encoder_what, training=self.train_time)
+            # encoder_what = tf.layers.batch_normalization(encoder_what, training=self.train_time)
             encoder_whats.append(encoder_what)
 
         self.encoder_whats = encoder_whats
@@ -91,7 +91,7 @@ class SWWAE:
                 kl_divergence = tf.multiply(self.beta, tf.reduce_sum(kl_divergence), name='sparsity')
                 tf.add_to_collection('losses', kl_divergence)
 
-            self.representation = tf.layers.batch_normalization(encoder_fc, training=self.train_time)
+            self.representation = encoder_fc
 
     def decoder_forward(self):
         if self.rep_size is None:
@@ -106,7 +106,7 @@ class SWWAE:
                                                kernel_regularizer=self.regulazier,
                                                activation=tf.nn.relu)
 
-                decoder_what = tf.layers.batch_normalization(decoder_what, training=self.train_time)
+                #decoder_what = tf.layers.batch_normalization(decoder_what, training=self.train_time)
                 pool_shape = self.encoder_whats[-1].get_shape()
                 decoder_what = tf.reshape(decoder_what, [-1, pool_shape[1].value, pool_shape[2].value, pool_shape[3].value])
 
@@ -137,7 +137,7 @@ class SWWAE:
                                                               kernel_initializer=self.kernel_initializer, bias_initializer=self.bias_initializer)
 
                 if i != 0:
-                    decoder_what = tf.layers.batch_normalization(decoder_what, training=self.train_time)
+                    #decoder_what = tf.layers.batch_normalization(decoder_what, training=self.train_time)
                     middle_loss = tf.nn.l2_loss(tf.subtract(decoder_what, self.encoder_whats[i-1]))
                     tf.add_to_collection('losses', tf.multiply(self.lambda_M, middle_loss, name='middle'))
 
