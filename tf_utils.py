@@ -33,6 +33,7 @@ def max_unpool(net, corr_out, mask, stride):
   with tf.name_scope('UnPool2D'):
     input_shape = net.get_shape().as_list()
     output_shape = corr_out.get_shape().as_list()
+    output_shape[-1] = input_shape[-1]
     # calculation indices for batch, height, width and feature maps
     one_like_mask = tf.ones_like(mask)
     batch_range = tf.reshape(tf.range(output_shape[0], dtype=tf.int64), shape=[input_shape[0], 1, 1, 1])
