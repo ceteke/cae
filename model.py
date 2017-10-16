@@ -187,9 +187,17 @@ class SWWAE:
 
     def ae_loss(self):
         reconstruction_loss = tf.losses.mean_squared_error(self.input, self.decoder_what)
-        tf.summary.scalar('loss', reconstruction_loss)
 
-        return reconstruction_loss
+        tf.add_to_collection('losses', reconstruction_loss)
+        losses = tf.get_collection('losses')
+
+        total_loss = tf.add_n(losses, name='total_loss')
+
+        for l in losses + [total_loss]:
+            loss_name = l.op.name
+            tf.summary.scalar(loss_name, l)
+
+        return total_loss
 
     def softmax_loss(self, fc_out):
         labels = tf.cast(self.labels, tf.int64)
