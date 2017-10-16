@@ -27,6 +27,11 @@ def max_pool_with_argmax(net, pool_size, stride):
     net = tf.layers.max_pooling2d(net, pool_size, stride)
     return net, mask
 
+def l2_regulazier(scale, collection_name):
+    def l2(weights):
+        tf.add_to_collection(collection_name, scale * tf.nn.l2_loss(weights, weights.op.name))
+    return l2
+
 # Thank you, @https://github.com/Pepslee
 def max_unpool(net, corr_out, mask):
   assert mask is not None

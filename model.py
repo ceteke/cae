@@ -1,5 +1,5 @@
 import tensorflow as tf
-from tf_utils import max_unpool, variable_on_cpu, variable_with_weight_decay, max_pool_with_argmax
+from tf_utils import max_unpool, variable_on_cpu, variable_with_weight_decay, max_pool_with_argmax, l2_regulazier
 import re
 
 class SWWAE:
@@ -22,6 +22,7 @@ class SWWAE:
         self.batch_size = batch_size
         self.sparsity = sparsity
         self.beta = beta
+        self.regulazier = l2_regulazier(0.05, 'losses')
 
         self.form_variables()
         self.form_graph()
@@ -45,7 +46,8 @@ class SWWAE:
             # convn
             with tf.variable_scope('conv{}'.format(i+1)):
                 encoder_what = tf.layers.conv2d(encoder_what, layer.channel_size, layer.filter_size, padding='valid',
-                                                activation=tf.nn.relu)
+                                                activation=tf.nn.relu,kernel_regularizer=self.regulazier,
+                                                bias_regularizer=self.regulazier)
                 encoder_convs.append(encoder_what)
 
             # pooln
@@ -108,17 +110,17 @@ class SWWAE:
                 if i == 0: # Does not use non-linearity at the last layer
                     output_shape = self.input.get_shape()
                     bias_size = self.image_shape[-1]
-                    filter_size = [layer.filter_size, layer.filter_size, bias_size, layer.channel_size]
                 else:
                     output_shape = self.encoder_whats[i-1].get_shape()
                     bias_size = self.layers[i - 1].channel_size
-                    filter_size = [layer.filter_size, layer.filter_size, bias_size, layer.channel_size]
 
+
+                filter_size = [layer.filter_size, layer.filter_size, bias_size, layer.channel_size]
 
                 filter = tf.get_variable('filter', shape=filter_size, dtype=self.dtype,
-                                         initializer=tf.glorot_uniform_initializer(dtype=self.dtype))
+                                         initializer=tf.glorot_uniform_initializer(dtype=self.dtype), regularizer=self.regulazier)
                 bias = tf.get_variable('bias', shape=bias_size, dtype=self.dtype,
-                                       initializer=tf.constant_initializer(0.0, dtype=self.dtype))
+                                       initializer=tf.constant_initializer(0.0, dtype=self.dtype), regularizer=self.regulazier)
 
                 decoder_what = tf.nn.conv2d_transpose(decoder_what, filter, output_shape=output_shape,
                                                       strides=[1,1,1,1], padding='VALID')
