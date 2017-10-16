@@ -106,15 +106,29 @@ class SWWAE:
 
             with tf.variable_scope('deconv{}'.format(i+1)):
                 if i == 0: # Does not use non-linearity at the last layer
+                    output_shape = self.input.get_shape()
+                    filter_size = [layer.filter_size, layer.filter_size, self.image_shape[-1], layer.channel_size]
+                    bias_size = self.image_shape[-1]
                     shape = self.image_shape[-1]
                     decoder_what = tf.nn.conv2d_transpose(decoder_what, [layer.filter_size, layer.filter_size, shape, layer.channel_size],
                                            output_shape=self.input.get_shape(), strides=[1,1,1,1], padding='VALID')
-                    # decoder_what = tf.layers.conv2d_transpose(decoder_what, shape, layer.filter_size, padding='valid')
                 else:
-                    shape = self.layers[i - 1].channel_size
-                    print(decoder_what)
-                    decoder_what = tf.nn.conv2d_transpose(decoder_what, [layer.filter_size, layer.filter_size, shape, layer.channel_size],
-                                           output_shape=self.encoder_whats[i-1].get_shape(), strides=[1,1,1,1], padding='VALID')
+                    output_shape = self.encoder_whats[i-1].get_shape()
+                    filter_size = [layer.filter_size, layer.filter_size, self.layers[i - 1].channel_size, layer.channel_size]
+                    bias_size = self.layers[i - 1].channel_size
+
+                filter = tf.get_variable('filter', shape=filter_size, dtype=self.dtype,
+                                         initializer=tf.glorot_uniform_initializer(dtype=self.dtype))
+                bias = tf.get_variable('bias', shape=bias_size, dtype=self.dtype,
+                                       initializer=tf.constant_initializer(0.0, dtype=self.dtype))
+
+                decoder_what = tf.nn.conv2d_transpose(decoder_what, filter, output_shape=output_shape,
+                                                      strides=[1,1,1,1], padding='VALID')
+
+                decoder_what = tf.nn.bias_add(decoder_what, bias)
+
+                if i != 0:
+                    decoder_what = tf.nn.relu(decoder_what)
 
                 decoder_whats.append(decoder_what)
 
