@@ -22,7 +22,7 @@ class SWWAE:
         self.batch_size = batch_size
         self.sparsity = sparsity
         self.beta = beta
-        self.regulazier = l2_regulazier(0.05, 'losses')
+        self.regulazier = l2_regulazier(0.1, 'losses')
 
         self.form_variables()
         self.form_graph()
