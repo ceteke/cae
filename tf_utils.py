@@ -22,7 +22,7 @@ def max_pool_with_argmax(net, pool_size, stride):
       net,
       ksize=[1, stride, stride, 1],
       strides=[1, stride, stride, 1],
-      padding='SAME')
+      padding='VALID')
     mask = tf.stop_gradient(mask)
     net = tf.layers.max_pooling2d(net, pool_size, stride)
     return net, mask
