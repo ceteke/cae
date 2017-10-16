@@ -218,15 +218,14 @@ class SWWAE:
         return s_loss
 
     def init_optimizer(self, loss):
-        num_batches_per_epoch = self.train_size / self.batch_size
-        decay_steps = int(num_batches_per_epoch * 350)
+        num_batches_per_epoch = self.train_size
+        decay_steps = int(num_batches_per_epoch * 100)
         lr = tf.train.exponential_decay(self.learning_rate,
                                         self.global_step,
                                         decay_steps,
                                         0.1,
                                         staircase=True)
-        tf.summary.scalar('learning_rate', lr)
-        optimizer = tf.train.GradientDescentOptimizer(learning_rate=lr)
+        optimizer = tf.train.AdamOptimizer(learning_rate=lr)
         self.opt_op = optimizer.minimize(loss, global_step=self.global_step)
 
     def form_graph(self):
