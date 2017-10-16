@@ -80,7 +80,7 @@ class SWWAE:
                                              bias_initializer=self.bias_initializer,
                                              kernel_regularizer=self.regulazier,
                                              bias_regularizer=self.regulazier)
-
+                encoder_fc = tf.layers.batch_normalization(encoder_fc, training=self.train_time)
                 tf.summary.histogram('representation', encoder_fc)
 
                 p_hat = tf.reduce_mean(encoder_fc, axis=0) # Mean over the batch
@@ -106,8 +106,10 @@ class SWWAE:
                                                kernel_initializer=self.kernel_initializer,
                                                bias_initializer=self.bias_initializer,
                                                kernel_regularizer=self.regulazier,
-                                               bias_regularizer=self.regulazier)
+                                               bias_regularizer=self.regulazier,
+                                               activation=tf.nn.relu)
 
+                decoder_what = tf.layers.batch_normalization(decoder_what, training=self.train_time)
                 fc_loss = tf.multiply(self.lambda_M, tf.nn.l2_loss(tf.subtract(decoder_what, self.flatten)), name='dense')
                 tf.add_to_collection('losses', fc_loss)
 
