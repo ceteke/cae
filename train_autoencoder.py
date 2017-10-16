@@ -40,11 +40,11 @@ def main():
 
     layers = parse_layers(parsed.layer_str)
     fc_size = parsed.fc_layers
-
+    train_steps = int(len(dataset.training_data) / parsed.batch_size)
     sess = tf.Session()
     swwae = SWWAE(sess,img_shape,'autoencode',layers,learning_rate=parsed.learning_rate,lambda_rec=parsed.lambda_rec,
                   lambda_M=parsed.lambda_M,dtype=tf.float32, tensorboard_id=parsed.tensorboard_id, encoder_train=True,
-                  rep_size=fc_size, batch_size=parsed.batch_size, sparsity=parsed.sparsity, beta=parsed.beta)
+                  rep_size=fc_size, batch_size=parsed.batch_size, sparsity=parsed.sparsity, beta=parsed.beta, train_size=train_steps)
 
     if parsed.rest_dir is not None:
         swwae.restore(parsed.rest_dir)
@@ -67,7 +67,7 @@ def main():
 
     datagen.fit(dataset.training_data)
 
-    train_steps = int(len(dataset.training_data) / parsed.batch_size)
+
 
     print("Started training.\nTrain steps: {}".format(train_steps))
 

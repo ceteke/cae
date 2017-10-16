@@ -3,7 +3,7 @@ from tf_utils import max_unpool, variable_on_cpu, variable_with_weight_decay, ma
 import re
 
 class SWWAE:
-    def __init__(self, sess, image_shape, mode, layers, rep_size=None, fc_layers=None, learning_rate=None, lambda_rec=None,
+    def __init__(self, sess, image_shape, mode, layers, train_size, rep_size=None, fc_layers=None, learning_rate=None, lambda_rec=None,
                  lambda_M=None, dtype=tf.float32, tensorboard_id=None, num_classes=None, encoder_train=True, batch_size=32,
                  sparsity=0.05, beta=0.5):
         self.layers = layers
@@ -22,7 +22,8 @@ class SWWAE:
         self.batch_size = batch_size
         self.sparsity = sparsity
         self.beta = beta
-        self.regulazier = l2_regulazier(0.5, 'losses')
+        self.train_size = train_size
+        self.regulazier = l2_regulazier(0.05, 'losses')
         self.kernel_initializer = tf.truncated_normal_initializer(mean=0.0, stddev=1e-3)
         self.bias_initializer = tf.constant_initializer(0.0)
 
@@ -217,7 +218,15 @@ class SWWAE:
         return s_loss
 
     def init_optimizer(self, loss):
-        optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
+        num_batches_per_epoch = self.train_size / self.batch_size
+        decay_steps = int(num_batches_per_epoch * 350)
+        lr = tf.train.exponential_decay(self.learning_rate,
+                                        self.global_step,
+                                        decay_steps,
+                                        0.1,
+                                        staircase=True)
+        tf.summary.scalar('learning_rate', lr)
+        optimizer = tf.train.GradientDescentOptimizer(learning_rate=lr)
         self.opt_op = optimizer.minimize(loss, global_step=self.global_step)
 
     def form_graph(self):
