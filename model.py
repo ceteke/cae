@@ -99,6 +99,7 @@ class SWWAE:
 
         decoder_whats = []
         for i in range(len(self.layers)-1, -1, -1):
+            print(i, len(self.encoder_whats))
             layer = self.layers[i]
             #unpooln
             if self.encoder_wheres[i] is not None:
