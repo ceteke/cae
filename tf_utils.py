@@ -36,7 +36,7 @@ def max_unpool(net, corr_out, mask):
     output_shape[-1] = input_shape[-1]
     # calculation indices for batch, height, width and feature maps
     one_like_mask = tf.ones_like(mask)
-    batch_range = tf.reshape(tf.range(output_shape[0], dtype=tf.int64), shape=[input_shape[0], 1, 1, 1])
+    batch_range = tf.reshape(tf.range(output_shape[0], dtype=tf.int32), shape=[input_shape[0], 1, 1, 1])
     b = one_like_mask * batch_range
     y = mask // (output_shape[2] * output_shape[3])
     x = mask % (output_shape[2] * output_shape[3]) // output_shape[3]
