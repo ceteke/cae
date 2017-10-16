@@ -40,7 +40,7 @@ def max_unpool(net, corr_out, mask):
     b = one_like_mask * batch_range
     y = mask // (output_shape[2] * output_shape[3])
     x = mask % (output_shape[2] * output_shape[3]) // output_shape[3]
-    feature_range = tf.range(output_shape[3], dtype=tf.int64)
+    feature_range = tf.range(output_shape[3], dtype=tf.int32)
     f = one_like_mask * feature_range
     # transpose indices & reshape update values to one dimension
     updates_size = tf.size(net)
