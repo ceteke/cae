@@ -150,7 +150,7 @@ class SWWAE:
                 decoder_whats.append(decoder_what)
 
             if i != 0:
-                middle_loss = tf.multiply(self.lambda_M, tf.nn.l2_loss(tf.subtract(decoder_what, self.encoder_convs[i-1])), name='middle')
+                middle_loss = tf.multiply(self.lambda_M, tf.nn.l2_loss(tf.subtract(decoder_what, self.encoder_convs[i])), name='middle')
                 decoder_what = tf.layers.batch_normalization(decoder_what, training=self.train_time)
                 tf.add_to_collection('losses', middle_loss)
 
