@@ -38,6 +38,7 @@ class SWWAE:
     def encoder_forward(self):
         encoder_whats = []
         encoder_wheres = []
+        encoder_convs = []
         encoder_what = self.input
 
         for i, layer in enumerate(self.layers):
@@ -45,6 +46,7 @@ class SWWAE:
             with tf.variable_scope('conv{}'.format(i+1)):
                 encoder_what = tf.layers.conv2d(encoder_what, layer.channel_size, layer.filter_size, padding='valid',
                                                 activation=tf.nn.relu)
+                encoder_convs.append(encoder_what)
 
             # pooln
             if layer.pool_size is not None:
@@ -53,13 +55,14 @@ class SWWAE:
 
             else:
                 encoder_wheres.append(None)
-            print(encoder_what)
+
             encoder_whats.append(encoder_what)
 
         self.encoder_whats = encoder_whats
         pool_shape = encoder_whats[-1].get_shape()
         self.flatten = tf.reshape(encoder_whats[-1], [-1, (pool_shape[1] * pool_shape[2] * pool_shape[3]).value])
         self.encoder_wheres = encoder_wheres
+        self.encoder_convs = encoder_convs
 
         if self.rep_size is None:
             self.representation = self.flatten
@@ -99,7 +102,7 @@ class SWWAE:
             layer = self.layers[i]
             #unpooln
             if self.encoder_wheres[i] is not None:
-                decoder_what = max_unpool(decoder_what, self.encoder_wheres[i], layer.pool_size)
+                decoder_what = max_unpool(decoder_what, self.encoder_convs[i], self.encoder_wheres[i])
 
             with tf.variable_scope('deconv{}'.format(i+1)):
                 if i == 0: # Does not use non-linearity at the last layer
