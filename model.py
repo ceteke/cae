@@ -53,7 +53,7 @@ class SWWAE:
 
             else:
                 encoder_wheres.append(None)
-
+            print(encoder_what)
             encoder_whats.append(encoder_what)
 
         self.encoder_whats = encoder_whats
