@@ -99,17 +99,19 @@ class SWWAE:
             layer = self.layers[i]
             #unpooln
             if self.encoder_wheres[i] is not None:
-                decoder_what = max_unpool(decoder_what, self.encoder_whats[i-1], self.encoder_wheres[i], layer.pool_size)
+                decoder_what = max_unpool(decoder_what, self.encoder_wheres[i], layer.pool_size)
 
             with tf.variable_scope('deconv{}'.format(i+1)):
                 if i == 0: # Does not use non-linearity at the last layer
                     shape = self.image_shape[-1]
-                    decoder_what = tf.layers.conv2d_transpose(decoder_what, shape, layer.filter_size, padding='valid')
+                    decoder_what = tf.nn.conv2d_transpose(decoder_what, [1,layer.filter_size, layer.filter_size, 1],
+                                           output_shape=self.input.get_shape(), strides=[1,1,1,1], padding='VALID')
+                    # decoder_what = tf.layers.conv2d_transpose(decoder_what, shape, layer.filter_size, padding='valid')
                 else:
                     shape = self.layers[i - 1].channel_size
                     print(decoder_what)
-                    decoder_what = tf.layers.conv2d_transpose(decoder_what, shape, layer.filter_size, padding='valid',
-                                                              activation=tf.nn.relu)
+                    decoder_what = tf.nn.conv2d_transpose(decoder_what, [1,layer.filter_size, layer.filter_size, 1],
+                                           output_shape=self.encoder_whats[i-1].get_shape(), strides=[1,1,1,1], padding='VALID')
 
                 decoder_whats.append(decoder_what)
 
