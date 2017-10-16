@@ -99,7 +99,6 @@ class SWWAE:
 
         decoder_whats = []
         for i in range(len(self.layers)-1, -1, -1):
-            print(i, len(self.encoder_whats))
             layer = self.layers[i]
             #unpooln
             if self.encoder_wheres[i] is not None:
@@ -109,13 +108,13 @@ class SWWAE:
                 if i == 0: # Does not use non-linearity at the last layer
                     shape = self.image_shape[-1]
                     decoder_what = tf.nn.conv2d_transpose(decoder_what, [1,layer.filter_size, layer.filter_size, 1],
-                                           output_shape=self.input.get_shape(), strides=[1,1,1,1], padding='VALID')
+                                           output_shape=self.input.get_shape().as_list(), strides=[1,1,1,1], padding='VALID')
                     # decoder_what = tf.layers.conv2d_transpose(decoder_what, shape, layer.filter_size, padding='valid')
                 else:
                     shape = self.layers[i - 1].channel_size
                     print(decoder_what)
                     decoder_what = tf.nn.conv2d_transpose(decoder_what, [1,layer.filter_size, layer.filter_size, 1],
-                                           output_shape=self.encoder_whats[i-1].get_shape(), strides=[1,1,1,1], padding='VALID')
+                                           output_shape=self.encoder_whats[i-1].get_shape().as_list(), strides=[1,1,1,1], padding='VALID')
 
                 decoder_whats.append(decoder_what)
 
