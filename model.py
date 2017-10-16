@@ -23,6 +23,8 @@ class SWWAE:
         self.sparsity = sparsity
         self.beta = beta
         self.regulazier = l2_regulazier(0.1, 'losses')
+        self.kernel_initializer = tf.truncated_normal_initializer(mean=0.0, stddev=1e-3)
+        self.bias_initializer = tf.constant_initializer(0.0)
 
         self.form_variables()
         self.form_graph()
@@ -47,7 +49,8 @@ class SWWAE:
             with tf.variable_scope('conv{}'.format(i+1)):
                 encoder_what = tf.layers.conv2d(encoder_what, layer.channel_size, layer.filter_size, padding='valid',
                                                 activation=tf.nn.relu,kernel_regularizer=self.regulazier,
-                                                bias_regularizer=self.regulazier)
+                                                bias_regularizer=self.regulazier,kernel_initializer=self.kernel_initializer,
+                                                bias_initializer=self.bias_initializer)
                 encoder_convs.append(encoder_what)
 
             # pooln
@@ -70,7 +73,12 @@ class SWWAE:
             self.representation = self.flatten
         else:
             with tf.name_scope('encoder_fc'):
-                encoder_fc = tf.layers.dense(self.flatten,self.rep_size, activation=tf.nn.relu)
+                encoder_fc = tf.layers.dense(self.flatten,self.rep_size, activation=tf.nn.relu,
+                                             kernel_initializer=self.kernel_initializer,
+                                             bias_initializer=self.bias_initializer,
+                                             kernel_regularizer=self.regulazier,
+                                             bias_regularizer=self.regulazier)
+
                 tf.summary.histogram('representation', encoder_fc)
 
                 p_hat = tf.reduce_mean(encoder_fc, axis=0) # Mean over the batch
@@ -92,7 +100,12 @@ class SWWAE:
             with tf.name_scope('decoder_fc'):
                 decoder_what = self.representation
 
-                decoder_what = tf.layers.dense(decoder_what,self.flatten.get_shape()[1].value)
+                decoder_what = tf.layers.dense(decoder_what,self.flatten.get_shape()[1].value,
+                                               kernel_initializer=self.kernel_initializer,
+                                               bias_initializer=self.bias_initializer,
+                                               kernel_regularizer=self.regulazier,
+                                               bias_regularizer=self.regulazier)
+
                 fc_loss = tf.multiply(self.lambda_M, tf.nn.l2_loss(tf.subtract(decoder_what, self.flatten)), name='dense')
                 tf.add_to_collection('losses', fc_loss)
 
@@ -118,9 +131,9 @@ class SWWAE:
                 filter_size = [layer.filter_size, layer.filter_size, bias_size, layer.channel_size]
 
                 filter = tf.get_variable('filter', shape=filter_size, dtype=self.dtype,
-                                         initializer=tf.glorot_uniform_initializer(dtype=self.dtype), regularizer=self.regulazier)
+                                         initializer=self.kernel_initializer, regularizer=self.regulazier)
                 bias = tf.get_variable('bias', shape=bias_size, dtype=self.dtype,
-                                       initializer=tf.constant_initializer(0.0, dtype=self.dtype), regularizer=self.regulazier)
+                                       initializer=self.bias_initializer, regularizer=self.regulazier)
 
                 decoder_what = tf.nn.conv2d_transpose(decoder_what, filter, output_shape=output_shape,
                                                       strides=[1,1,1,1], padding='VALID')
