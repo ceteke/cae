@@ -28,7 +28,7 @@ def max_pool_with_argmax(net, pool_size, stride):
     return net, mask
 
 # Thank you, @https://github.com/Pepslee
-def max_unpool(net, corr_out, mask, stride):
+def max_unpool(net, corr_out, mask):
   assert mask is not None
   with tf.name_scope('UnPool2D'):
     input_shape = net.get_shape().as_list()
