@@ -107,15 +107,13 @@ class SWWAE:
             with tf.variable_scope('deconv{}'.format(i+1)):
                 if i == 0: # Does not use non-linearity at the last layer
                     output_shape = self.input.get_shape()
-                    filter_size = [layer.filter_size, layer.filter_size, self.image_shape[-1], layer.channel_size]
                     bias_size = self.image_shape[-1]
-                    shape = self.image_shape[-1]
-                    decoder_what = tf.nn.conv2d_transpose(decoder_what, [layer.filter_size, layer.filter_size, shape, layer.channel_size],
-                                           output_shape=self.input.get_shape(), strides=[1,1,1,1], padding='VALID')
+                    filter_size = [layer.filter_size, layer.filter_size, bias_size, layer.channel_size]
                 else:
                     output_shape = self.encoder_whats[i-1].get_shape()
-                    filter_size = [layer.filter_size, layer.filter_size, self.layers[i - 1].channel_size, layer.channel_size]
                     bias_size = self.layers[i - 1].channel_size
+                    filter_size = [layer.filter_size, layer.filter_size, bias_size, layer.channel_size]
+
 
                 filter = tf.get_variable('filter', shape=filter_size, dtype=self.dtype,
                                          initializer=tf.glorot_uniform_initializer(dtype=self.dtype))
