@@ -82,7 +82,7 @@ class SWWAE:
                 kl_divergence = tf.multiply(self.beta, tf.reduce_sum(kl_divergence), name='sparsity')
                 # tf.add_to_collection('losses', kl_divergence)
 
-            self.representation = tf.layers.batch_normalization(encoder_fc, self.train_time)
+            self.representation = tf.layers.batch_normalization(encoder_fc, training=self.train_time)
 
     def decoder_forward(self):
         if self.rep_size is None:
@@ -93,7 +93,7 @@ class SWWAE:
 
                 decoder_what = tf.layers.dense(decoder_what,self.flatten.get_shape()[1].value,kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.regulazier, bias_initializer=self.bias_initializer, activation=tf.nn.relu)
-                decoder_what = tf.layers.batch_normalization(decoder_what, self.train_time)
+                decoder_what = tf.layers.batch_normalization(decoder_what, training=self.train_time)
                 fc_loss = tf.multiply(self.lambda_M, tf.nn.l2_loss(tf.subtract(decoder_what, self.flatten)), name='dense')
                 # tf.add_to_collection('losses', fc_loss)
 
@@ -230,7 +230,7 @@ class SWWAE:
     def train(self, input, labels=None):
         if self.mode == 'autoencode':
             _, batch_loss, global_step, tb_merge = self.sess.run([self.opt_op, self.ae_loss, self.global_step, self.merged],
-                                                       feed_dict={self.input: input})
+                                                       feed_dict={self.input: input, self.train_time:True})
             self.train_writer.add_summary(tb_merge, global_step)
             return batch_loss, global_step
         elif self.mode == 'classification':
@@ -243,7 +243,7 @@ class SWWAE:
     def eval(self, input, labels=None):
         if self.mode == 'autoencode':
             loss, tb_merge, global_step = self.sess.run([self.ae_loss, self.merged, self.global_step],
-                                                        feed_dict={self.input:input})
+                                                        feed_dict={self.input:input, self.train_time:False})
             self.test_writer.add_summary(tb_merge, global_step)
             return loss
         elif self.mode == 'classification':
@@ -253,7 +253,7 @@ class SWWAE:
             return loss, accuracy
 
     def get_representation(self, input):
-        return self.sess.run(self.representation, feed_dict={self.input:input})
+        return self.sess.run(self.representation, feed_dict={self.input:input, self.train_time:False})
 
     def save(self, path, ow=True):
         saver = tf.train.Saver()
