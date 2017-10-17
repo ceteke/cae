@@ -22,7 +22,7 @@ class SWWAE:
         self.batch_size = batch_size
         self.sparsity = sparsity
         self.beta = beta
-        self.regulazier = l2_regulazier(0.5, 'losses')
+        self.regulazier = l2_regulazier(0.01, 'losses')
         self.kernel_initializer = tf.truncated_normal_initializer(mean=0.0, stddev=1e-3)
         self.bias_initializer = tf.constant_initializer(0.0)
 
@@ -48,8 +48,8 @@ class SWWAE:
             # convn
             with tf.variable_scope('conv{}'.format(i+1)):
                 encoder_what = tf.layers.conv2d(encoder_what, layer.channel_size, layer.filter_size, padding='valid',
-                                                activation=tf.nn.relu,kernel_regularizer=self.regulazier,
-                                                bias_regularizer=self.regulazier,kernel_initializer=self.kernel_initializer,
+                                                activation=tf.nn.relu,kernel_regularizer=self.regulazier
+                                                ,kernel_initializer=self.kernel_initializer,
                                                 bias_initializer=self.bias_initializer)
                 encoder_convs.append(encoder_what)
 
@@ -76,8 +76,7 @@ class SWWAE:
                 encoder_fc = tf.layers.dense(self.flatten,self.rep_size, activation=tf.nn.relu,
                                              kernel_initializer=self.kernel_initializer,
                                              bias_initializer=self.bias_initializer,
-                                             kernel_regularizer=self.regulazier,
-                                             bias_regularizer=self.regulazier)
+                                             kernel_regularizer=self.regulazier)
 
                 tf.summary.histogram('representation', encoder_fc)
 
@@ -103,8 +102,7 @@ class SWWAE:
                 decoder_what = tf.layers.dense(decoder_what,self.flatten.get_shape()[1].value,
                                                kernel_initializer=self.kernel_initializer,
                                                bias_initializer=self.bias_initializer,
-                                               kernel_regularizer=self.regulazier,
-                                               bias_regularizer=self.regulazier)
+                                               kernel_regularizer=self.regulazier)
 
                 fc_loss = tf.multiply(self.lambda_M, tf.nn.l2_loss(tf.subtract(decoder_what, self.flatten)), name='dense')
                 tf.add_to_collection('losses', fc_loss)
