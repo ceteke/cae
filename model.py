@@ -57,7 +57,7 @@ class SWWAE:
             if layer.pool_size is not None:
                 encoder_what =  tf.layers.max_pooling2d(encoder_what, pool_size=layer.pool_size, strides=layer.pool_size,
                                                         padding='valid')
-                encoder_where = getwhere(encoder_what, encoder_what)
+                encoder_where = getwhere(encoder_convs[-1], encoder_what)
                 encoder_wheres.append(encoder_where)
 
             else:
