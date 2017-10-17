@@ -1,5 +1,5 @@
 import tensorflow as tf
-from tf_utils import max_unpool, variable_on_cpu, variable_with_weight_decay, max_pool_with_argmax
+from tf_utils import max_unpool, variable_on_cpu, variable_with_weight_decay, max_pool_with_argmax, l2_regulazier
 import re
 
 class SWWAE:
@@ -22,7 +22,9 @@ class SWWAE:
         self.batch_size = batch_size
         self.sparsity = sparsity
         self.beta = beta
-
+        self.regulazier = l2_regulazier(0.01, 'losses')
+        self.kernel_initializer = tf.truncated_normal_initializer(mean=0.0, stddev=1e-3)
+        self.bias_initializer = tf.constant_initializer(0.0)
         self.form_variables()
         self.form_graph()
 
@@ -44,7 +46,8 @@ class SWWAE:
             # convn
             with tf.variable_scope('conv{}'.format(i+1)):
                 encoder_what = tf.layers.conv2d(encoder_what, layer.channel_size, layer.filter_size, padding='same',
-                                                activation=tf.nn.relu)
+                                                activation=tf.nn.relu, kernel_initializer=self.kernel_initializer,
+                                                kernel_regularizer=self.regulazier, bias_initializer=self.bias_initializer)
 
             # pooln
             if layer.pool_size is not None:
@@ -65,7 +68,8 @@ class SWWAE:
             self.representation = self.flatten
         else:
             with tf.name_scope('encoder_fc'):
-                encoder_fc = tf.layers.dense(self.flatten,self.rep_size, activation=tf.nn.relu)
+                encoder_fc = tf.layers.dense(self.flatten,self.rep_size, activation=tf.nn.relu, kernel_initializer=self.kernel_initializer,
+                                             kernel_regularizer=self.regulazier, bias_initializer=self.bias_initializer)
                 tf.summary.histogram('representation', encoder_fc)
 
                 p_hat = tf.reduce_mean(encoder_fc, axis=0) # Mean over the batch
@@ -87,7 +91,8 @@ class SWWAE:
             with tf.name_scope('decoder_fc'):
                 decoder_what = self.representation
 
-                decoder_what = tf.layers.dense(decoder_what,self.flatten.get_shape()[1].value)
+                decoder_what = tf.layers.dense(decoder_what,self.flatten.get_shape()[1].value,kernel_initializer=self.kernel_initializer,
+                                             kernel_regularizer=self.regulazier, bias_initializer=self.bias_initializer, activation=tf.nn.relu)
                 fc_loss = tf.multiply(self.lambda_M, tf.nn.l2_loss(tf.subtract(decoder_what, self.flatten)), name='dense')
                 tf.add_to_collection('losses', fc_loss)
 
@@ -104,12 +109,19 @@ class SWWAE:
             with tf.variable_scope('deconv{}'.format(i+1)):
                 if i == 0: # Does not use non-linearity at the last layer
                     shape = self.image_shape[-1]
-                    decoder_what = tf.layers.conv2d_transpose(decoder_what, shape, layer.filter_size, padding='same')
+                    decoder_what = tf.layers.conv2d_transpose(decoder_what, shape, layer.filter_size, padding='same',
+                                                              kernel_initializer=self.kernel_initializer,
+                                                              kernel_regularizer=self.regulazier,
+                                                              bias_initializer=self.bias_initializer
+                                                              )
                 else:
                     shape = self.layers[i - 1].channel_size
-                    print(decoder_what)
                     decoder_what = tf.layers.conv2d_transpose(decoder_what, shape, layer.filter_size, padding='same',
-                                                              activation=tf.nn.relu)
+                                                              activation=tf.nn.relu,
+                                                              kernel_initializer=self.kernel_initializer,
+                                                              kernel_regularizer=self.regulazier,
+                                                              bias_initializer=self.bias_initializer
+                                                              )
 
                 decoder_whats.append(decoder_what)
 
