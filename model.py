@@ -1,9 +1,9 @@
 import tensorflow as tf
-from tf_utils import max_unpool, variable_on_cpu, variable_with_weight_decay, max_pool_with_argmax, l2_regulazier, getwhere
+from tf_utils import max_unpool, variable_on_cpu, variable_with_weight_decay, max_pool_with_argmax, l2_regulazier
 import re
 
 class SWWAE:
-    def __init__(self, sess, image_shape, mode, layers, train_size, rep_size=None, fc_layers=None, learning_rate=None, lambda_rec=None,
+    def __init__(self, sess, image_shape, mode, layers, rep_size=None, fc_layers=None, learning_rate=None, lambda_rec=None,
                  lambda_M=None, dtype=tf.float32, tensorboard_id=None, num_classes=None, encoder_train=True, batch_size=32,
                  sparsity=0.05, beta=0.5):
         self.layers = layers
@@ -22,7 +22,6 @@ class SWWAE:
         self.batch_size = batch_size
         self.sparsity = sparsity
         self.beta = beta
-        self.train_size = train_size
         self.regulazier = l2_regulazier(0.01, 'losses')
         self.kernel_initializer = tf.truncated_normal_initializer(mean=0.0, stddev=1e-3)
         self.bias_initializer = tf.constant_initializer(0.0)
@@ -49,21 +48,19 @@ class SWWAE:
             # convn
             with tf.variable_scope('conv{}'.format(i+1)):
                 encoder_what = tf.layers.conv2d(encoder_what, layer.channel_size, layer.filter_size, padding='valid',
-                                                activation=tf.nn.relu, kernel_regularizer=self.regulazier,
-                                                kernel_initializer=self.kernel_initializer,
+                                                activation=tf.nn.relu,kernel_regularizer=self.regulazier
+                                                ,kernel_initializer=self.kernel_initializer,
                                                 bias_initializer=self.bias_initializer)
                 encoder_convs.append(encoder_what)
+
             # pooln
             if layer.pool_size is not None:
-                encoder_what =  tf.layers.max_pooling2d(encoder_what, pool_size=layer.pool_size, strides=layer.pool_size,
-                                                        padding='valid')
-                encoder_where = getwhere(encoder_convs[-1], encoder_what)
+                encoder_what, encoder_where = max_pool_with_argmax(encoder_what, layer.pool_size, layer.pool_size)
                 encoder_wheres.append(encoder_where)
 
             else:
                 encoder_wheres.append(None)
 
-            # encoder_what = tf.layers.batch_normalization(encoder_what, training=self.train_time)
             encoder_whats.append(encoder_what)
 
         self.encoder_whats = encoder_whats
@@ -80,6 +77,7 @@ class SWWAE:
                                              kernel_initializer=self.kernel_initializer,
                                              bias_initializer=self.bias_initializer,
                                              kernel_regularizer=self.regulazier)
+
                 tf.summary.histogram('representation', encoder_fc)
 
                 p_hat = tf.reduce_mean(encoder_fc, axis=0) # Mean over the batch
@@ -104,43 +102,50 @@ class SWWAE:
                 decoder_what = tf.layers.dense(decoder_what,self.flatten.get_shape()[1].value,
                                                kernel_initializer=self.kernel_initializer,
                                                bias_initializer=self.bias_initializer,
-                                               kernel_regularizer=self.regulazier,
-                                               activation=tf.nn.relu)
+                                               kernel_regularizer=self.regulazier)
 
-                #decoder_what = tf.layers.batch_normalization(decoder_what, training=self.train_time)
+                fc_loss = tf.multiply(self.lambda_M, tf.nn.l2_loss(tf.subtract(decoder_what, self.flatten)), name='dense')
+                tf.add_to_collection('losses', fc_loss)
+
                 pool_shape = self.encoder_whats[-1].get_shape()
                 decoder_what = tf.reshape(decoder_what, [-1, pool_shape[1].value, pool_shape[2].value, pool_shape[3].value])
 
+        decoder_whats = []
         for i in range(len(self.layers)-1, -1, -1):
             layer = self.layers[i]
             #unpooln
             if self.encoder_wheres[i] is not None:
-                decoder_what = max_unpool(decoder_what, self.encoder_convs[i], self.encoder_wheres[i], layer.pool_size)
+                decoder_what = max_unpool(decoder_what, self.encoder_convs[i], self.encoder_wheres[i])
 
             with tf.variable_scope('deconv{}'.format(i+1)):
                 if i == 0: # Does not use non-linearity at the last layer
                     output_shape = self.input.get_shape()
                     bias_size = self.image_shape[-1]
-
-                    filter_size = [layer.filter_size, layer.filter_size, bias_size, layer.channel_size]
-
-                    filter = tf.get_variable('filter', shape=filter_size, dtype=self.dtype,
-                                             initializer=self.kernel_initializer, regularizer=self.regulazier)
-                    bias = tf.get_variable('bias', shape=bias_size, dtype=self.dtype, initializer=self.bias_initializer)
-
-                    decoder_what = tf.nn.conv2d_transpose(decoder_what, filter, output_shape=output_shape,
-                                                          strides=[1, 1, 1, 1], padding='VALID')
-
-                    decoder_what = tf.nn.bias_add(decoder_what, bias)
                 else:
-                    decoder_what = tf.layers.conv2d_transpose(decoder_what, self.layers[i-1].channel_size, layer.filter_size,
-                                                              padding='VALID', activation=tf.nn.relu, kernel_regularizer=self.regulazier,
-                                                              kernel_initializer=self.kernel_initializer, bias_initializer=self.bias_initializer)
+                    output_shape = self.encoder_whats[i-1].get_shape()
+                    bias_size = self.layers[i - 1].channel_size
+
+
+                filter_size = [layer.filter_size, layer.filter_size, bias_size, layer.channel_size]
+
+                filter = tf.get_variable('filter', shape=filter_size, dtype=self.dtype,
+                                         initializer=self.kernel_initializer, regularizer=self.regulazier)
+                bias = tf.get_variable('bias', shape=bias_size, dtype=self.dtype,
+                                       initializer=self.bias_initializer, regularizer=self.regulazier)
+
+                decoder_what = tf.nn.conv2d_transpose(decoder_what, filter, output_shape=output_shape,
+                                                      strides=[1,1,1,1], padding='VALID')
+
+                decoder_what = tf.nn.bias_add(decoder_what, bias)
 
                 if i != 0:
-                    #decoder_what = tf.layers.batch_normalization(decoder_what, training=self.train_time)
-                    middle_loss = tf.nn.l2_loss(tf.subtract(decoder_what, self.encoder_whats[i-1]))
-                    tf.add_to_collection('losses', tf.multiply(self.lambda_M, middle_loss, name='middle'))
+                    decoder_what = tf.nn.relu(decoder_what)
+
+                decoder_whats.append(decoder_what)
+
+            if i != 0:
+                middle_loss = tf.multiply(self.lambda_M, tf.nn.l2_loss(tf.subtract(decoder_what, self.encoder_whats[i-1])), name='middle')
+                tf.add_to_collection('losses', middle_loss)
 
         self.decoder_what = decoder_what
 
@@ -181,16 +186,21 @@ class SWWAE:
 
 
     def ae_loss(self):
-        reconstruction_loss = tf.nn.l2_loss(tf.subtract(self.input, self.decoder_what), name='reconstruction')
-
+        reconstruction_loss = tf.multiply(self.lambda_rec, tf.nn.l2_loss(tf.subtract(self.input, self.decoder_what)), name='reconstruction')
         tf.add_to_collection('losses', reconstruction_loss)
         losses = tf.get_collection('losses')
 
         total_loss = tf.add_n(losses, name='total_loss')
 
+        loss_averages = tf.train.ExponentialMovingAverage(0.9, name='avg')
+        loss_averages_op = loss_averages.apply(losses + [total_loss])
+
         for l in losses + [total_loss]:
             loss_name = l.op.name
             tf.summary.scalar(loss_name, l)
+
+        with tf.control_dependencies([loss_averages_op]):
+            total_loss = tf.identity(total_loss)
 
         return total_loss
 
@@ -205,17 +215,8 @@ class SWWAE:
         return s_loss
 
     def init_optimizer(self, loss):
-        num_batches_per_epoch = self.train_size
-        decay_steps = int(num_batches_per_epoch * 100)
-        lr = tf.train.exponential_decay(self.learning_rate,
-                                        self.global_step,
-                                        decay_steps,
-                                        0.1,
-                                        staircase=True)
-        optimizer = tf.train.AdamOptimizer(learning_rate=lr)
-        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-        with tf.control_dependencies(update_ops):
-            self.opt_op = optimizer.minimize(loss, global_step=self.global_step)
+        optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
+        self.opt_op = optimizer.minimize(loss, global_step=self.global_step)
 
     def form_graph(self):
         print("Forming encoder", flush=True)
