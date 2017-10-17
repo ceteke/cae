@@ -173,15 +173,9 @@ class SWWAE:
 
         total_loss = tf.add_n(losses, name='total_loss')
 
-        loss_averages = tf.train.ExponentialMovingAverage(0.9, name='avg')
-        loss_averages_op = loss_averages.apply(losses + [total_loss])
-
         for l in losses + [total_loss]:
             loss_name = l.op.name
             tf.summary.scalar(loss_name, l)
-
-        with tf.control_dependencies([loss_averages_op]):
-            total_loss = tf.identity(total_loss)
 
         return total_loss
 
