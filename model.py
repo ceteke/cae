@@ -48,14 +48,14 @@ class SWWAE:
         for i, layer in enumerate(self.layers):
             # convn
             with tf.variable_scope('conv{}'.format(i+1)):
-                encoder_conv = tf.layers.conv2d(encoder_what, layer.channel_size, layer.filter_size, padding='same',
+                encoder_conv = tf.layers.conv2d(encoder_what, layer.channel_size, layer.filter_size, padding='valid',
                                                 activation=tf.nn.relu, kernel_regularizer=self.regulazier,
                                                 kernel_initializer=self.kernel_initializer,
                                                 bias_initializer=self.bias_initializer)
             # pooln
             if layer.pool_size is not None:
                 encoder_what =  tf.layers.max_pooling2d(encoder_conv, pool_size=layer.pool_size, strides=layer.pool_size,
-                                                        padding='same')
+                                                        padding='valid')
                 encoder_where = getwhere(encoder_conv, encoder_what)
                 encoder_wheres.append(encoder_where)
 
@@ -128,12 +128,12 @@ class SWWAE:
                     bias = tf.get_variable('bias', shape=bias_size, dtype=self.dtype, initializer=self.bias_initializer)
 
                     decoder_what = tf.nn.conv2d_transpose(decoder_what, filter, output_shape=output_shape,
-                                                          strides=[1, 1, 1, 1], padding='SAME')
+                                                          strides=[1, 1, 1, 1], padding='VALID')
 
                     decoder_what = tf.nn.bias_add(decoder_what, bias)
                 else:
                     decoder_what = tf.layers.conv2d_transpose(decoder_what, self.layers[i-1].channel_size, layer.filter_size,
-                                                              padding='same', activation=tf.nn.relu, kernel_regularizer=self.regulazier,
+                                                              padding='VALID', activation=tf.nn.relu, kernel_regularizer=self.regulazier,
                                                               kernel_initializer=self.kernel_initializer, bias_initializer=self.bias_initializer)
 
                 if i != 0:
