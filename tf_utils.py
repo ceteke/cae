@@ -39,9 +39,9 @@ def getwhere(y_prepool, y_postpool):
     return tf.gradients(tf.reduce_sum(y_postpool), y_prepool)[0]
 
 # Thank you, @https://github.com/Pepslee
-def max_unpool(net, mask, pool_size):
+def max_unpool(net, corr, mask, pool_size):
   with tf.name_scope('UnPool2D'):
-      in_shape = net.get_shape().as_list()
-      out_shape = [in_shape[1]*pool_size, in_shape[2]*pool_size]
+      corr_shape = corr.get_shape().as_list()
+      out_shape = [corr_shape[1], corr_shape[2]]
       y = tf.image.resize_images(net, out_shape, method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
       return tf.multiply(y, mask)
