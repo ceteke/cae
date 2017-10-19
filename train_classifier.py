@@ -21,7 +21,7 @@ elif parsed.dataset == 'mnist':
     dataset.process()
     img_size = [28,28,1]
 elif parsed.dataset == 'fashion':
-    dataset = FashionDataset()
+    dataset = FashionDataset(flip=False)
     dataset.process()
     img_size = [28, 28, 1]
 elif parsed.dataset == 'stl10':
