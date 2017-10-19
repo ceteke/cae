@@ -33,6 +33,7 @@ class SWWAE:
         self.expected_output = tf.placeholder(shape=[self.batch_size] + self.image_shape, dtype=self.dtype, name='output_batch')
         self.train_time = tf.placeholder(shape=(), dtype=tf.bool)
         self.global_step = tf.Variable(0, trainable=False)
+        self.dropout_rate = tf.placeholder(shape=(), dtype=tf.float32)
 
     def encoder_forward(self):
         encoder_wheres = []
@@ -53,6 +54,8 @@ class SWWAE:
             else:
                 encoder_wheres.append(None)
 
+            encoder_what = tf.layers.dropout(encoder_what, rate=self.dropout_rate)
+
         pool_shape = encoder_what.get_shape()
         self.encoder_what = encoder_what
         self.flatten = tf.reshape(encoder_what, [-1, (pool_shape[1] * pool_shape[2] * pool_shape[3]).value])
@@ -62,7 +65,7 @@ class SWWAE:
             self.representation = self.flatten
         else:
             with tf.name_scope('encoder_fc'):
-                encoder_fc = tf.layers.dense(self.flatten,self.rep_size, activation=tf.nn.relu, kernel_initializer=self.kernel_initializer,
+                encoder_fc = tf.layers.dense(self.flatten, self.rep_size, activation=tf.nn.relu, kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.regulazier, bias_initializer=self.bias_initializer)
                 tf.summary.histogram('representation', encoder_fc)
 
@@ -76,16 +79,16 @@ class SWWAE:
                 kl_divergence = tf.multiply(self.beta, tf.reduce_sum(kl_divergence), name='sparsity')
                 # tf.add_to_collection('losses', kl_divergence)
 
-            self.representation = encoder_fc
+            self.representation = tf.layers.dropout(encoder_what, rate=self.dropout_rate)
 
     def decoder_forward(self):
         if self.rep_size is None:
             decoder_what = self.encoder_what
         else:
             with tf.name_scope('decoder_fc'):
-                decoder_what = tf.layers.dense(self.representation,self.flatten.get_shape()[1].value,kernel_initializer=self.kernel_initializer,
+                decoder_what = tf.layers.dense(self.representation, self.flatten.get_shape()[1].value,kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.regulazier, bias_initializer=self.bias_initializer, activation=tf.nn.relu)
-
+                decoder_what = tf.layers.dropout(decoder_what, rate=self.dropout_rate)
                 pool_shape = self.encoder_what.get_shape()
                 decoder_what = tf.reshape(decoder_what, [-1, pool_shape[1].value, pool_shape[2].value, pool_shape[3].value])
 
@@ -111,7 +114,7 @@ class SWWAE:
                                                               kernel_regularizer=self.regulazier,
                                                               bias_initializer=self.bias_initializer
                                                               )
-
+                decoder_what = tf.layers.dropout(decoder_what, rate=self.dropout_rate)
         self.decoder_what = decoder_what
 
     def ae_loss(self):
