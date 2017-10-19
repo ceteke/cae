@@ -138,7 +138,8 @@ class SWWAE:
         self.decoder_forward()
         self.loss = self.ae_loss()
         print("Forming L2 optimizer with learning rate {}".format(self.learning_rate), flush=True)
-        self.init_optimizer(self.loss)
+        if self.mode == 'autoencode':
+            self.init_optimizer(self.loss)
         tf.summary.image('whatwhere/stacked', tf.concat((self.input, self.decoder_what), axis=2))
 
         self.merged = tf.summary.merge_all()
