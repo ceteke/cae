@@ -77,8 +77,8 @@ class SWWAE:
                                     trainable=False)
                 one = tf.get_variable(name='1', shape=(self.rep_size), dtype=tf.float32, initializer=tf.constant_initializer(1.0),
                                       trainable=False)
-                kl_divergence = tf.multiply(p, (tf.log(p) - tf.log(p_hat + 1e-4))) + tf.multiply(tf.subtract(one, p),
-                                                                                          (tf.log(tf.subtract(one, p)) - tf.log(tf.subtract(one, p_hat))))
+                kl_divergence = tf.multiply(p, (tf.log(p) - tf.log(p_hat + 1e-3))) + tf.multiply(tf.subtract(one, p),
+                                                                                          (tf.log(tf.subtract(one, p)) - tf.log(tf.subtract(one, p_hat) + 1e-3)))
                 kl_divergence = tf.multiply(self.beta, tf.reduce_sum(kl_divergence), name='sparsity')
                 tf.add_to_collection('losses', kl_divergence)
 
@@ -160,7 +160,7 @@ class SWWAE:
 
 
     def ae_loss(self):
-        reconstruction_loss = tf.nn.l2_loss(tf.subtract(self.output, self.decoder_what))
+        reconstruction_loss = tf.nn.l2_loss(tf.subtract(self.output, self.decoder_what),name='reconstruction')
         tf.add_to_collection('losses', reconstruction_loss)
         losses = tf.get_collection('losses')
 
@@ -192,9 +192,9 @@ class SWWAE:
         if self.mode == 'autoencode':
             print("Forming decoder", flush=True)
             self.decoder_forward()
-            self.ae_loss = self.ae_loss()
+            self.loss = self.ae_loss()
             print("Forming L2 optimizer with learning rate {}".format(self.learning_rate), flush=True)
-            self.init_optimizer(self.ae_loss)
+            self.init_optimizer(self.loss)
             tf.summary.image('whatwhere/stacked', tf.concat((self.input, self.decoder_what), axis=2))
 
         elif self.mode == 'classification':
