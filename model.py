@@ -1,5 +1,5 @@
 import tensorflow as tf
-from tf_utils import max_unpool, max_pool_with_argmax, l2_regulazier
+from tf_utils import max_unpool, l2_regulazier
 
 class SWWAE:
     def __init__(self, sess, image_shape, mode, layers, rep_size=None, fc_layers=None, learning_rate=None, lambda_rec=None,
@@ -48,7 +48,8 @@ class SWWAE:
 
             # pooln
             if layer.pool_size is not None:
-                encoder_what, encoder_where = max_pool_with_argmax(encoder_what, layer.pool_size, layer.pool_size)
+                encoder_what, encoder_where = tf.nn.max_pool_with_argmax(encoder_what, ksize=[1,layer.pool_size, layer.pool_size, 1],
+                                                                         strides=[1, layer.pool_size, layer.pool_size, 1], padding='SAME')
                 encoder_wheres.append(encoder_where)
 
             else:
@@ -59,6 +60,7 @@ class SWWAE:
         pool_shape = encoder_what.get_shape()
         self.encoder_what = encoder_what
         self.flatten = tf.reshape(encoder_what, [-1, (pool_shape[1] * pool_shape[2] * pool_shape[3]).value])
+
         self.encoder_wheres = encoder_wheres
 
         if self.rep_size is None:
@@ -79,7 +81,7 @@ class SWWAE:
                 kl_divergence = tf.multiply(self.beta, tf.reduce_sum(kl_divergence), name='sparsity')
                 # tf.add_to_collection('losses', kl_divergence)
 
-            self.representation = tf.layers.dropout(encoder_what, rate=self.dropout_rate)
+            self.representation = tf.layers.dropout(encoder_fc, rate=self.dropout_rate)
 
     def decoder_forward(self):
         if self.rep_size is None:
@@ -90,13 +92,15 @@ class SWWAE:
                                              kernel_regularizer=self.regulazier, bias_initializer=self.bias_initializer, activation=tf.nn.relu)
                 decoder_what = tf.layers.dropout(decoder_what, rate=self.dropout_rate)
                 pool_shape = self.encoder_what.get_shape()
-                decoder_what = tf.reshape(decoder_what, [-1, pool_shape[1].value, pool_shape[2].value, pool_shape[3].value])
+                decoder_what = tf.reshape(decoder_what, [self.batch_size, pool_shape[1].value, pool_shape[2].value, pool_shape[3].value])
 
         for i in range(len(self.layers)-1, -1, -1):
             layer = self.layers[i]
+            print(decoder_what)
             #unpooln
             if self.encoder_wheres[i] is not None:
-                decoder_what = max_unpool(decoder_what, self.encoder_wheres[i], layer.pool_size)
+                decoder_what = max_unpool(decoder_what, self.encoder_wheres[i], ksize= [1, layer.pool_size, layer.pool_size, 1]
+                                          ,scope='unpool{}'.format(i+1))
 
             with tf.variable_scope('deconv{}'.format(i+1)):
                 if i == 0: # Does not use non-linearity at the last layer
@@ -153,18 +157,20 @@ class SWWAE:
 
     def train(self, input, expected_output):
         _, batch_loss, global_step, tb_merge = self.sess.run([self.opt_op, self.loss, self.global_step, self.merged],
-                                                       feed_dict={self.input: input, self.expected_output: expected_output, self.train_time:True})
+                                                       feed_dict={self.input: input, self.expected_output: expected_output, self.train_time:True,
+                                                                  self.dropout_rate:0.25})
         self.train_writer.add_summary(tb_merge, global_step)
         return batch_loss, global_step
 
     def eval(self, input, expected_output):
         loss, tb_merge, global_step = self.sess.run([self.loss, self.merged, self.global_step],
-                                                        feed_dict={self.input:input, self.expected_output:expected_output, self.train_time:False})
+                                                        feed_dict={self.input:input, self.expected_output:expected_output, self.train_time:False,
+                                                                   self.dropout_rate:0.0})
         self.test_writer.add_summary(tb_merge, global_step)
         return loss
 
     def get_representation(self, input):
-        return self.sess.run(self.representation, feed_dict={self.input:input, self.train_time:False})
+        return self.sess.run(self.representation, feed_dict={self.input:input, self.train_time:False, self.dropout_rate:0.0})
 
     def save(self, path, ow=True):
         saver = tf.train.Saver()
