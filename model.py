@@ -40,12 +40,11 @@ class SWWAE:
 
         for i, layer in enumerate(self.layers):
             # convn
+            encoder_what = tf.layers.batch_normalization(encoder_what, training=self.train_time)
             with tf.variable_scope('conv{}'.format(i+1)):
                 encoder_what = tf.layers.conv2d(encoder_what, layer.channel_size, layer.filter_size, padding='same',
                                                 activation=tf.nn.relu, kernel_initializer=self.kernel_initializer,
                                                 kernel_regularizer=self.regulazier, bias_initializer=self.bias_initializer)
-
-                encoder_what = tf.layers.batch_normalization(encoder_what, training=self.train_time)
 
             # pooln
             if layer.pool_size is not None:
@@ -64,9 +63,9 @@ class SWWAE:
             self.representation = self.flatten
         else:
             with tf.name_scope('encoder_fc'):
-                encoder_fc = tf.layers.dense(self.flatten,self.rep_size, activation=tf.nn.relu, kernel_initializer=self.kernel_initializer,
+                encoder_fc = tf.layers.batch_normalization(self.flatten, training=self.train_time)
+                encoder_fc = tf.layers.dense(encoder_fc,self.rep_size, activation=tf.nn.relu, kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.regulazier, bias_initializer=self.bias_initializer)
-                encoder_fc = tf.layers.batch_normalization(encoder_fc, training=self.train_time)
                 tf.summary.histogram('representation', encoder_fc)
 
                 p_hat = tf.reduce_mean(encoder_fc, axis=0) # Mean over the batch
@@ -86,17 +85,16 @@ class SWWAE:
             decoder_what = self.encoder_what
         else:
             with tf.name_scope('decoder_fc'):
-                decoder_what = self.representation
-
+                decoder_what = tf.layers.batch_normalization(self.representation, training=self.train_time)
                 decoder_what = tf.layers.dense(decoder_what,self.flatten.get_shape()[1].value,kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.regulazier, bias_initializer=self.bias_initializer, activation=tf.nn.relu)
-                decoder_what = tf.layers.batch_normalization(decoder_what, training=self.train_time)
 
                 pool_shape = self.encoder_what.get_shape()
                 decoder_what = tf.reshape(decoder_what, [-1, pool_shape[1].value, pool_shape[2].value, pool_shape[3].value])
 
         for i in range(len(self.layers)-1, -1, -1):
             layer = self.layers[i]
+            decoder_what = tf.layers.batch_normalization(decoder_what, training=self.train_time)
             #unpooln
             if self.encoder_wheres[i] is not None:
                 decoder_what = max_unpool(decoder_what, self.encoder_wheres[i], layer.pool_size)
@@ -117,7 +115,6 @@ class SWWAE:
                                                               kernel_regularizer=self.regulazier,
                                                               bias_initializer=self.bias_initializer
                                                               )
-                    decoder_what = tf.layers.batch_normalization(decoder_what, training=self.train_time)
 
         self.decoder_what = decoder_what
 
