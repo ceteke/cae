@@ -13,6 +13,7 @@ cifar-10-python
 tensorboard
 # Distribution / packaging
 MNIST_data
+data
 .Python
 env/
 build/

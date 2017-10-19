@@ -1,5 +1,5 @@
 import tensorflow as tf
-from tf_utils import max_unpool, variable_on_cpu, variable_with_weight_decay, max_pool_with_argmax
+from tf_utils import max_unpool, variable_on_cpu, variable_with_weight_decay, max_pool_with_argmax, l2_regulazier
 import re
 
 class SWWAE:
@@ -22,7 +22,7 @@ class SWWAE:
         self.batch_size = batch_size
         self.sparsity = sparsity
         self.beta = beta
-        self.regulazier = tf.contrib.layers.l2_regularizer(scale=0.01)
+        self.regulazier = l2_regulazier(0.01, collection_name='losses')
         self.kernel_initializer = tf.truncated_normal_initializer(mean=0.0, stddev=1e-3)
         self.bias_initializer = tf.constant_initializer(0.0)
         self.form_variables()
@@ -31,7 +31,7 @@ class SWWAE:
     def form_variables(self):
         self.input = tf.placeholder(shape=[self.batch_size, self.image_shape[0], self.image_shape[1], self.image_shape[2]],
                                     dtype=self.dtype, name='input_batch')
-
+        self.output = tf.placeholder(shape=[self.batch_size] + self.image_shape, dtype=self.dtype, name='output_batch')
         self.train_time = tf.placeholder(shape=(), dtype=tf.bool)
         self.global_step = tf.Variable(0, trainable=False)
         if self.mode == 'classification':
@@ -77,12 +77,12 @@ class SWWAE:
                                     trainable=False)
                 one = tf.get_variable(name='1', shape=(self.rep_size), dtype=tf.float32, initializer=tf.constant_initializer(1.0),
                                       trainable=False)
-                kl_divergence = tf.multiply(p, (tf.log(p) - tf.log(p_hat + 0.0001))) + tf.multiply(tf.subtract(one, p),
+                kl_divergence = tf.multiply(p, (tf.log(p) - tf.log(p_hat + 1e-4))) + tf.multiply(tf.subtract(one, p),
                                                                                           (tf.log(tf.subtract(one, p)) - tf.log(tf.subtract(one, p_hat))))
                 kl_divergence = tf.multiply(self.beta, tf.reduce_sum(kl_divergence), name='sparsity')
-                # tf.add_to_collection('losses', kl_divergence)
+                tf.add_to_collection('losses', kl_divergence)
 
-            self.representation = tf.layers.batch_normalization(encoder_fc, training=self.train_time)
+            self.representation = encoder_fc
 
     def decoder_forward(self):
         if self.rep_size is None:
@@ -94,8 +94,6 @@ class SWWAE:
                 decoder_what = tf.layers.dense(decoder_what,self.flatten.get_shape()[1].value,kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.regulazier, bias_initializer=self.bias_initializer, activation=tf.nn.relu)
                 decoder_what = tf.layers.batch_normalization(decoder_what, training=self.train_time)
-                fc_loss = tf.multiply(self.lambda_M, tf.nn.l2_loss(tf.subtract(decoder_what, self.flatten)), name='dense')
-                # tf.add_to_collection('losses', fc_loss)
 
                 pool_shape = self.encoder_whats[-1].get_shape()
                 decoder_what = tf.reshape(decoder_what, [-1, pool_shape[1].value, pool_shape[2].value, pool_shape[3].value])
@@ -122,11 +120,6 @@ class SWWAE:
                                                               kernel_regularizer=self.regulazier,
                                                               bias_initializer=self.bias_initializer
                                                               )
-
-            if i != 0:
-                decoder_what = tf.layers.batch_normalization(decoder_what, training=self.train_time)
-                middle_loss = tf.multiply(self.lambda_M, tf.nn.l2_loss(tf.subtract(decoder_what, self.encoder_whats[i-1])), name='middle')
-                # tf.add_to_collection('losses', middle_loss)
 
         self.decoder_what = decoder_what
 
@@ -167,7 +160,7 @@ class SWWAE:
 
 
     def ae_loss(self):
-        reconstruction_loss = tf.nn.l2_loss(tf.subtract(self.input, self.decoder_what))
+        reconstruction_loss = tf.nn.l2_loss(tf.subtract(self.output, self.decoder_what))
         tf.add_to_collection('losses', reconstruction_loss)
         losses = tf.get_collection('losses')
 
@@ -221,10 +214,10 @@ class SWWAE:
         self.sess.run(tf.global_variables_initializer())
         self.sess.run(tf.local_variables_initializer())
 
-    def train(self, input, labels=None):
+    def train(self, input, output, labels=None):
         if self.mode == 'autoencode':
             _, batch_loss, global_step, tb_merge = self.sess.run([self.opt_op, self.ae_loss, self.global_step, self.merged],
-                                                       feed_dict={self.input: input, self.train_time:True})
+                                                       feed_dict={self.input: input, self.output:output, self.train_time:True})
             self.train_writer.add_summary(tb_merge, global_step)
             return batch_loss, global_step
         elif self.mode == 'classification':
@@ -234,10 +227,10 @@ class SWWAE:
             self.train_writer.add_summary(tb_merge, global_step)
             return batch_loss, accuracy, global_step
 
-    def eval(self, input, labels=None):
+    def eval(self, input, output, labels=None):
         if self.mode == 'autoencode':
             loss, tb_merge, global_step = self.sess.run([self.ae_loss, self.merged, self.global_step],
-                                                        feed_dict={self.input:input, self.train_time:False})
+                                                        feed_dict={self.input:input, self.output:output, self.train_time:False})
             self.test_writer.add_summary(tb_merge, global_step)
             return loss
         elif self.mode == 'classification':

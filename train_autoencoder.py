@@ -4,8 +4,6 @@ import tensorflow as tf
 from utils import parse_layers
 from arguments import get_parser
 from utils import save_loss, clear_loss
-import time
-from keras.preprocessing.image import ImageDataGenerator
 
 def main():
     clear_loss()
@@ -48,24 +46,9 @@ def main():
 
     if parsed.rest_dir is not None:
         swwae.restore(parsed.rest_dir)
-
+    X_train, X_actual = dataset.get_batches_actual(parsed.batch_size)
     X_test, _ = dataset.get_batches(parsed.batch_size, train=False)
     test_steps = len(X_test)
-
-    print("Preprocessing")
-    datagen = ImageDataGenerator(
-        featurewise_center=False,  # set input mean to 0 over the dataset
-        samplewise_center=False,  # set each sample mean to 0
-        featurewise_std_normalization=False,  # divide inputs by std of the dataset
-        samplewise_std_normalization=False,  # divide each input by its std
-        zca_whitening=False,  # apply ZCA whitening
-        rotation_range=0.0,  # randomly rotate images in the range (degrees, 0 to 180)
-        width_shift_range=0.1,  # randomly shift images horizontally (fraction of total width)
-        height_shift_range=0.1,  # randomly shift images vertically (fraction of total height)
-        horizontal_flip=True,  # randomly flip images
-        vertical_flip=False)  # randomly flip images
-
-    datagen.fit(dataset.training_data)
 
     train_steps = int(len(dataset.training_data) / parsed.batch_size)
 
@@ -75,8 +58,8 @@ def main():
         total_loss = 0.0
         epoch_loss = 0.0
         batches = 0
-        for x_batch in datagen.flow(dataset.training_data, batch_size=parsed.batch_size):
-            loss, global_step = swwae.train(x_batch)
+        for i, x_batch in enumerate(X_train):
+            loss, global_step = swwae.train(x_batch, X_actual[i])
             batches += 1
 
             total_loss += loss
@@ -86,9 +69,8 @@ def main():
                 avg_loss = total_loss / parsed.info_step
                 save_loss(avg_loss)
 
-                for test_step in range(test_steps):
-                    X_test_step = X_test[test_step]
-                    swwae.eval(input=X_test_step)
+                for j, x_batch_test in enumerate(X_test):
+                    swwae.eval(x_batch_test, x_batch_test)
 
                 #print("Train epoch {}:\n\tstep {}\n\tavg. L2 Loss: {}".format(e + 1, step + 1, avg_loss),
                  #     flush=True)
