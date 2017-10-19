@@ -40,7 +40,6 @@ class SWWAE:
 
         for i, layer in enumerate(self.layers):
             # convn
-            encoder_what = tf.layers.batch_normalization(encoder_what, training=self.train_time)
             with tf.variable_scope('conv{}'.format(i+1)):
                 encoder_what = tf.layers.conv2d(encoder_what, layer.channel_size, layer.filter_size, padding='same',
                                                 activation=tf.nn.relu, kernel_initializer=self.kernel_initializer,
