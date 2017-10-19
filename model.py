@@ -31,7 +31,7 @@ class SWWAE:
     def form_variables(self):
         self.input = tf.placeholder(shape=[self.batch_size, self.image_shape[0], self.image_shape[1], self.image_shape[2]],
                                     dtype=self.dtype, name='input_batch')
-        self.output = tf.placeholder(shape=[self.batch_size] + self.image_shape, dtype=self.dtype, name='output_batch')
+        self.expected_output = tf.placeholder(shape=[self.batch_size] + self.image_shape, dtype=self.dtype, name='output_batch')
         self.train_time = tf.placeholder(shape=(), dtype=tf.bool)
         self.global_step = tf.Variable(0, trainable=False)
         if self.mode == 'classification':
@@ -160,7 +160,7 @@ class SWWAE:
 
 
     def ae_loss(self):
-        reconstruction_loss = tf.nn.l2_loss(tf.subtract(self.output, self.decoder_what),name='reconstruction')
+        reconstruction_loss = tf.nn.l2_loss(tf.subtract(self.expected_output, self.decoder_what),name='reconstruction')
         tf.add_to_collection('losses', reconstruction_loss)
         losses = tf.get_collection('losses')
 
@@ -214,10 +214,10 @@ class SWWAE:
         self.sess.run(tf.global_variables_initializer())
         self.sess.run(tf.local_variables_initializer())
 
-    def train(self, input, output, labels=None):
+    def train(self, input, expected_output, labels=None):
         if self.mode == 'autoencode':
-            _, batch_loss, global_step, tb_merge = self.sess.run([self.opt_op, self.ae_loss, self.global_step, self.merged],
-                                                       feed_dict={self.input: input, self.output:output, self.train_time:True})
+            _, batch_loss, global_step, tb_merge = self.sess.run([self.opt_op, self.loss, self.global_step, self.merged],
+                                                       feed_dict={self.input: input, self.expected_output: expected_output, self.train_time:True})
             self.train_writer.add_summary(tb_merge, global_step)
             return batch_loss, global_step
         elif self.mode == 'classification':
@@ -227,10 +227,10 @@ class SWWAE:
             self.train_writer.add_summary(tb_merge, global_step)
             return batch_loss, accuracy, global_step
 
-    def eval(self, input, output, labels=None):
+    def eval(self, input, expected_output, labels=None):
         if self.mode == 'autoencode':
-            loss, tb_merge, global_step = self.sess.run([self.ae_loss, self.merged, self.global_step],
-                                                        feed_dict={self.input:input, self.output:output, self.train_time:False})
+            loss, tb_merge, global_step = self.sess.run([self.loss, self.merged, self.global_step],
+                                                        feed_dict={self.input:input, self.expected_output:expected_output, self.train_time:False})
             self.test_writer.add_summary(tb_merge, global_step)
             return loss
         elif self.mode == 'classification':
