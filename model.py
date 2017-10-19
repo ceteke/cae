@@ -56,7 +56,7 @@ class SWWAE:
 
             else:
                 encoder_wheres.append(None)
-            encoder_what = tf.layers.batch_normalization(encoder_what, training=self.train_time)
+            # encoder_what = tf.layers.batch_normalization(encoder_what, training=self.train_time)
             encoder_whats.append(encoder_what)
 
         self.encoder_whats = encoder_whats
@@ -93,7 +93,7 @@ class SWWAE:
 
                 decoder_what = tf.layers.dense(decoder_what,self.flatten.get_shape()[1].value,kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.regulazier, bias_initializer=self.bias_initializer, activation=tf.nn.relu)
-                decoder_what = tf.layers.batch_normalization(decoder_what, training=self.train_time)
+                # decoder_what = tf.layers.batch_normalization(decoder_what, training=self.train_time)
 
                 pool_shape = self.encoder_whats[-1].get_shape()
                 decoder_what = tf.reshape(decoder_what, [-1, pool_shape[1].value, pool_shape[2].value, pool_shape[3].value])
