@@ -61,8 +61,8 @@ class SWWAE:
                 encoder_fc = tf.layers.dense(self.flatten, self.rep_size, activation=tf.nn.relu, kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.regulazier, bias_initializer=self.bias_initializer)
                 tf.summary.histogram('representation', encoder_fc)
-                sparsity_loss = self.beta * self.kl_divergence(encoder_fc)
-                tf.add_to_collection('losses', sparsity_loss)
+                #sparsity_loss = self.beta * self.kl_divergence(encoder_fc)
+                #tf.add_to_collection('losses', sparsity_loss)
 
             self.representation = encoder_fc
 
