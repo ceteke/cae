@@ -46,7 +46,6 @@ class SWWAE:
                                                 activation=tf.nn.relu, kernel_initializer=self.kernel_initializer,
                                                 kernel_regularizer=self.regulazier, bias_initializer=self.bias_initializer,
                                                 strides=2)
-            encoder_what = tf.layers.dropout(encoder_what, rate=self.dropout_rate)
             encoder_whats.append(encoder_what)
 
         self.encoder_whats = encoder_whats
@@ -72,7 +71,7 @@ class SWWAE:
                 kl_divergence = tf.multiply(self.beta, tf.reduce_sum(kl_divergence), name='sparsity')
                 tf.add_to_collection('losses', kl_divergence)
 
-            self.representation = tf.layers.dropout(encoder_fc, rate=self.dropout_rate)
+            self.representation = encoder_fc
 
     def decoder_forward(self):
         if self.rep_size is None:
@@ -81,13 +80,12 @@ class SWWAE:
             with tf.name_scope('decoder_fc'):
                 decoder_what = tf.layers.dense(self.representation, self.flatten.get_shape()[1].value,kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.regulazier, bias_initializer=self.bias_initializer, activation=tf.nn.relu)
-                decoder_what = tf.layers.dropout(decoder_what, rate=self.dropout_rate)
                 pool_shape = self.encoder_what.get_shape()
                 decoder_what = tf.reshape(decoder_what, [self.batch_size, pool_shape[1].value, pool_shape[2].value, pool_shape[3].value])
 
         for i in range(len(self.layers)-1, -1, -1):
             layer = self.layers[i]
-
+            decoder_what = tf.add(decoder_what, self.encoder_whats[-1])
             with tf.variable_scope('deconv{}'.format(i+1)):
                 if i == 0:  # Does not use non-linearity at the last layer
                     output_shape = self.input.get_shape()
