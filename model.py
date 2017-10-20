@@ -85,7 +85,7 @@ class SWWAE:
 
         for i in range(len(self.layers)-1, -1, -1):
             layer = self.layers[i]
-            decoder_what = tf.add(decoder_what, self.encoder_whats[-1])
+            decoder_what = tf.add(decoder_what, self.encoder_whats[i])
             with tf.variable_scope('deconv{}'.format(i+1)):
                 if i == 0:  # Does not use non-linearity at the last layer
                     output_shape = self.input.get_shape()
