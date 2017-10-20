@@ -22,7 +22,7 @@ class SWWAE:
         self.batch_size = batch_size
         self.sparsity = np.array([sparsity] * rep_size).astype(np.float32)
         self.beta = beta
-        self.regulazier = l2_regulazier(0.01, collection_name='losses')
+        self.regulazier = l2_regulazier(0.1, collection_name='losses')
         self.kernel_initializer = tf.truncated_normal_initializer(mean=0.0, stddev=1e-2)
         self.bias_initializer = tf.constant_initializer(0.0)
         self.form_variables()
@@ -110,7 +110,7 @@ class SWWAE:
         self.decoder_what = decoder_what
 
     def ae_loss(self):
-        reconstruction_loss = tf.reduce_sum(tf.pow(tf.subtract(self.expected_output, self.decoder_what), 2.0))
+        reconstruction_loss = tf.nn.l2_loss(tf.subtract(self.decoder_what, self.expected_output, name='reconstruction'))
         tf.add_to_collection('losses', reconstruction_loss)
         losses = tf.get_collection('losses')
 
