@@ -36,32 +36,23 @@ class SWWAE:
         self.dropout_rate = tf.placeholder(shape=(), dtype=tf.float32)
 
     def encoder_forward(self):
-        encoder_wheres = []
         encoder_what = self.input
+        encoder_whats = []
 
         for i, layer in enumerate(self.layers):
             # convn
             with tf.variable_scope('conv{}'.format(i+1)):
                 encoder_what = tf.layers.conv2d(encoder_what, layer.channel_size, layer.filter_size, padding='same',
                                                 activation=tf.nn.relu, kernel_initializer=self.kernel_initializer,
-                                                kernel_regularizer=self.regulazier, bias_initializer=self.bias_initializer)
-
-            # pooln
-            if layer.pool_size is not None:
-                encoder_what, encoder_where = tf.nn.max_pool_with_argmax(encoder_what, ksize=[1,layer.pool_size, layer.pool_size, 1],
-                                                                         strides=[1, layer.pool_size, layer.pool_size, 1], padding='SAME')
-                encoder_wheres.append(encoder_where)
-
-            else:
-                encoder_wheres.append(None)
-
+                                                kernel_regularizer=self.regulazier, bias_initializer=self.bias_initializer,
+                                                strides=2)
             encoder_what = tf.layers.dropout(encoder_what, rate=self.dropout_rate)
+            encoder_whats.append(encoder_what)
 
+        self.encoder_whats = encoder_whats
         pool_shape = encoder_what.get_shape()
         self.encoder_what = encoder_what
         self.flatten = tf.reshape(encoder_what, [-1, (pool_shape[1] * pool_shape[2] * pool_shape[3]).value])
-
-        self.encoder_wheres = encoder_wheres
 
         if self.rep_size is None:
             self.representation = self.flatten
@@ -79,7 +70,7 @@ class SWWAE:
                 kl_divergence = tf.multiply(p, (tf.log(p) - tf.log(p_hat + 1e-3))) + tf.multiply(tf.subtract(one, p),
                                                                                           (tf.log(tf.subtract(one, p)) - tf.log(tf.subtract(one, p_hat) + 1e-3)))
                 kl_divergence = tf.multiply(self.beta, tf.reduce_sum(kl_divergence), name='sparsity')
-                # tf.add_to_collection('losses', kl_divergence)
+                tf.add_to_collection('losses', kl_divergence)
 
             self.representation = tf.layers.dropout(encoder_fc, rate=self.dropout_rate)
 
@@ -96,33 +87,35 @@ class SWWAE:
 
         for i in range(len(self.layers)-1, -1, -1):
             layer = self.layers[i]
-            print(decoder_what)
-            #unpooln
-            if self.encoder_wheres[i] is not None:
-                decoder_what = max_unpool(decoder_what, self.encoder_wheres[i], ksize= [1, layer.pool_size, layer.pool_size, 1]
-                                          ,scope='unpool{}'.format(i+1))
 
             with tf.variable_scope('deconv{}'.format(i+1)):
-                if i == 0: # Does not use non-linearity at the last layer
-                    shape = self.image_shape[-1]
-                    decoder_what = tf.layers.conv2d_transpose(decoder_what, shape, layer.filter_size, padding='same',
-                                                              kernel_initializer=self.kernel_initializer,
-                                                              kernel_regularizer=self.regulazier,
-                                                              bias_initializer=self.bias_initializer
-                                                              )
+                if i == 0:  # Does not use non-linearity at the last layer
+                    output_shape = self.input.get_shape()
+                    filter_size = [layer.filter_size, layer.filter_size, self.image_shape[-1], layer.channel_size]
+                    bias_size = self.image_shape[-1]
                 else:
-                    shape = self.layers[i - 1].channel_size
-                    decoder_what = tf.layers.conv2d_transpose(decoder_what, shape, layer.filter_size, padding='same',
-                                                              activation=tf.nn.relu,
-                                                              kernel_initializer=self.kernel_initializer,
-                                                              kernel_regularizer=self.regulazier,
-                                                              bias_initializer=self.bias_initializer
-                                                              )
-                decoder_what = tf.layers.dropout(decoder_what, rate=self.dropout_rate)
+                    up = self.encoder_whats[i - 1]
+                    output_shape = up.get_shape()
+                    filter_size = [layer.filter_size, layer.filter_size, self.layers[i - 1].channel_size,
+                                   layer.channel_size]
+                    bias_size = self.layers[i - 1].channel_size
+
+                filter = tf.get_variable('filter', shape=filter_size, dtype=self.dtype,
+                                         initializer=self.kernel_initializer, regularizer=self.regulazier)
+                bias = tf.get_variable('bias', shape=bias_size, dtype=self.dtype,
+                                       initializer=self.bias_initializer)
+
+                decoder_what = tf.nn.conv2d_transpose(decoder_what, filter, output_shape,
+                                                      strides=[1, 2, 2, 1])
+                decoder_what = tf.nn.bias_add(decoder_what, bias)
+
+                if i != 0:
+                    decoder_what = tf.nn.relu(decoder_what)
+            print(decoder_what)
         self.decoder_what = decoder_what
 
     def ae_loss(self):
-        reconstruction_loss = tf.nn.l2_loss(tf.subtract(self.expected_output, self.decoder_what),name='reconstruction')
+        reconstruction_loss = tf.losses.mean_squared_error(self.expected_output, self.decoder_what)
         tf.add_to_collection('losses', reconstruction_loss)
         losses = tf.get_collection('losses')
 
