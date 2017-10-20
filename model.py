@@ -1,5 +1,6 @@
 import tensorflow as tf
-from tf_utils import max_unpool, l2_regulazier
+from tf_utils import l2_regulazier
+import numpy as np
 
 class SWWAE:
     def __init__(self, sess, image_shape, mode, layers, rep_size=None, fc_layers=None, learning_rate=None, lambda_rec=None,
@@ -19,10 +20,10 @@ class SWWAE:
         self.encoder_train = encoder_train
         self.rep_size = rep_size
         self.batch_size = batch_size
-        self.sparsity = sparsity
+        self.sparsity = np.array([sparsity] * rep_size).astype(np.float32)
         self.beta = beta
         self.regulazier = l2_regulazier(0.01, collection_name='losses')
-        self.kernel_initializer = tf.truncated_normal_initializer(mean=0.0, stddev=1e-3)
+        self.kernel_initializer = tf.truncated_normal_initializer(mean=0.0, stddev=1e-2)
         self.bias_initializer = tf.constant_initializer(0.0)
         self.form_variables()
         self.form_graph()
@@ -60,18 +61,14 @@ class SWWAE:
                 encoder_fc = tf.layers.dense(self.flatten, self.rep_size, activation=tf.nn.relu, kernel_initializer=self.kernel_initializer,
                                              kernel_regularizer=self.regulazier, bias_initializer=self.bias_initializer)
                 tf.summary.histogram('representation', encoder_fc)
-
-                p_hat = tf.reduce_mean(encoder_fc, axis=0) # Mean over the batch
-                p = tf.get_variable(name='p', shape=(self.rep_size), dtype=tf.float32, initializer=tf.constant_initializer(self.sparsity),
-                                    trainable=False)
-                one = tf.get_variable(name='1', shape=(self.rep_size), dtype=tf.float32, initializer=tf.constant_initializer(1.0),
-                                      trainable=False)
-                kl_divergence = tf.multiply(p, (tf.log(p) - tf.log(p_hat + 1e-3))) + tf.multiply(tf.subtract(one, p),
-                                                                                          (tf.log(tf.subtract(one, p)) - tf.log(tf.subtract(one, p_hat) + 1e-3)))
-                kl_divergence = tf.multiply(self.beta, tf.reduce_sum(kl_divergence), name='sparsity')
-                tf.add_to_collection('losses', kl_divergence)
+                sparsity_loss = self.beta * self.kl_divergence(encoder_fc)
+                tf.add_to_collection('losses', sparsity_loss)
 
             self.representation = encoder_fc
+
+    def kl_divergence(self, p_hat):
+        p = self.sparsity
+        return tf.reduce_mean(p * tf.log(p) - p * tf.log(p_hat) + (1 - p) * tf.log(1 - p) - (1 - p) * tf.log(1 - p_hat), name='sparsity')
 
     def decoder_forward(self):
         if self.rep_size is None:
@@ -113,7 +110,7 @@ class SWWAE:
         self.decoder_what = decoder_what
 
     def ae_loss(self):
-        reconstruction_loss = tf.nn.l2_loss(tf.subtract(self.expected_output, self.decoder_what, name='reconstruction'))
+        reconstruction_loss = tf.reduce_sum(tf.pow(tf.subtract(self.expected_output, self.decoder_what), 2.0))
         tf.add_to_collection('losses', reconstruction_loss)
         losses = tf.get_collection('losses')
 
