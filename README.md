@@ -12,6 +12,8 @@ a new convolution layer is applied in the decoder -not deconvolution-.
 L2 losses between corresponding layers of encoder and decoder is called middle error. Recosntruction and these
 errors are added to get the total loss. Gradient descent is used for backpropogation.  
 
+```train_classifier.py``` trains a Linear SVM and saves the embeddings of the previously trained Autoencoder. To train the Autoencoder you should use ```train_autoencoder.py```.  
+
 For details see the reference.  
 
 **Reference:** https://arxiv.org/pdf/1506.02351.pdf
