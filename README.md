@@ -12,6 +12,10 @@ a new convolution layer is applied in the decoder -not deconvolution-.
 L2 losses between corresponding layers of encoder and decoder is called middle error. Recosntruction and these
 errors are added to get the total loss. Gradient descent is used for backpropogation.  
 
+```train_classifier.py``` trains a Linear SVM and saves the embeddings of the previously trained Autoencoder. To train the Autoencoder you should use ```train_autoencoder.py```. Output directory in ```train_classifier``` is the output directory where your Autoencoder is saved (Naming could have been better). Therefore, this model do not include the softmax layer in the network as discussed in the reference.  
+
+I have managed to obtain good reconstructions with this code. Classification (SVM) works well on MNIST and Fashion MNIST but not that well on CIFAR-10 dataset.
+
 For details see the reference.  
 
 **Reference:** https://arxiv.org/pdf/1506.02351.pdf
